@@ -1,0 +1,16 @@
+Options -Indexes
+RewriteEngine On
+
+# セキュリティ設定
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+
+# PHP設定
+php_value max_execution_time 300
+php_value memory_limit 256M
+
+# URL書き換え
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
