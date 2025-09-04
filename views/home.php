@@ -32,13 +32,13 @@
         
         <div class="row">
             <div class="col-md-6 mb-3">
-                <a href="/sites" class="btn btn-primary btn-lg w-100">
+                <a href="<?= url('sites') ?>" class="btn btn-primary btn-lg w-100">
                     📱 サイト管理
                 </a>
                 <p class="small text-muted mt-2">サイトを登録して分析を開始</p>
             </div>
             <div class="col-md-6 mb-3">
-                <a href="/analysis" class="btn btn-outline-primary btn-lg w-100">
+                <a href="<?= url('analysis') ?>" class="btn btn-outline-primary btn-lg w-100">
                     🔎 SEO分析
                 </a>
                 <p class="small text-muted mt-2">ページのSEO分析を実行</p>
@@ -47,18 +47,7 @@
     </div>
 </div>
 
-<?php
-$db = Database::getInstance();
-$recentAnalyses = $db->fetchAll("
-    SELECT ah.*, s.name as site_name, s.domain
-    FROM analysis_history ah 
-    JOIN sites s ON ah.site_id = s.id 
-    WHERE ah.status = 'completed'
-    ORDER BY ah.created_at DESC 
-    LIMIT 5
-");
-
-if (!empty($recentAnalyses)): ?>
+<?php if (!empty($recentAnalyses)): ?>
 <div class="row mt-5">
     <div class="col-12">
         <h3 class="mb-4">最近の分析結果</h3>
@@ -83,7 +72,7 @@ if (!empty($recentAnalyses)): ?>
                         </td>
                         <td><?= date('Y/m/d H:i', strtotime($analysis['created_at'])) ?></td>
                         <td>
-                            <a href="/analysis/result/<?= $analysis['id'] ?>" class="btn btn-sm btn-outline-primary">
+                            <a href="<?= url('analysis/result/' . $analysis['id']) ?>" class="btn btn-sm btn-outline-primary">
                                 結果を見る
                             </a>
                         </td>

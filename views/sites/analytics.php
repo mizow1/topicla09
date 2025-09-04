@@ -2,7 +2,7 @@
     <div class="col-md-10 col-lg-8">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/sites">サイト管理</a></li>
+                <li class="breadcrumb-item"><a href="<?= url('sites') ?>">サイト管理</a></li>
                 <li class="breadcrumb-item active">分析ツール連携設定</li>
             </ol>
         </nav>
@@ -102,7 +102,7 @@
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="/sites" class="btn btn-secondary me-md-2">戻る</a>
+                        <a href="<?= url('sites') ?>" class="btn btn-secondary me-md-2">戻る</a>
                         <button type="submit" class="btn btn-primary">設定を保存</button>
                     </div>
                 </form>

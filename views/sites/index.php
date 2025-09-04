@@ -1,6 +1,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>サイト管理</h2>
-    <a href="/sites/add" class="btn btn-primary">
+    <a href="<?= url('sites/add') ?>" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> サイト追加
     </a>
 </div>
@@ -25,7 +25,7 @@
     <div class="text-center py-5">
         <h4>サイトが登録されていません</h4>
         <p class="text-muted">SEO分析を開始するには、まずサイトを登録してください。</p>
-        <a href="/sites/add" class="btn btn-primary">最初のサイトを追加</a>
+        <a href="<?= url('sites/add') ?>" class="btn btn-primary">最初のサイトを追加</a>
     </div>
 <?php else: ?>
     <div class="row">
@@ -58,13 +58,13 @@
                         </div>
                         
                         <div class="btn-group w-100" role="group">
-                            <a href="/analysis?site_id=<?= $site['id'] ?>" class="btn btn-primary btn-sm">
+                            <a href="<?= url('analysis?site_id=' . $site['id']) ?>" class="btn btn-primary btn-sm">
                                 分析実行
                             </a>
-                            <a href="/sites/analytics/<?= $site['id'] ?>" class="btn btn-outline-secondary btn-sm">
+                            <a href="<?= url('sites/analytics/' . $site['id']) ?>" class="btn btn-outline-secondary btn-sm">
                                 連携設定
                             </a>
-                            <a href="/sites/edit/<?= $site['id'] ?>" class="btn btn-outline-secondary btn-sm">
+                            <a href="<?= url('sites/edit/' . $site['id']) ?>" class="btn btn-outline-secondary btn-sm">
                                 編集
                             </a>
                         </div>
@@ -77,18 +77,7 @@
         <?php endforeach; ?>
     </div>
     
-    <?php
-    // 各サイトの分析履歴を取得
-    $analysisHistory = $db->fetchAll("
-        SELECT ah.*, s.name as site_name 
-        FROM analysis_history ah 
-        JOIN sites s ON ah.site_id = s.id 
-        WHERE ah.status = 'completed'
-        ORDER BY ah.created_at DESC 
-        LIMIT 10
-    ");
-    
-    if (!empty($analysisHistory)): ?>
+    <?php if (!empty($analysisHistory)): ?>
         <div class="mt-5">
             <h4 class="mb-3">最近の分析履歴</h4>
             <div class="table-responsive">
@@ -114,7 +103,7 @@
                                 <td><?= date('Y/m/d H:i', strtotime($analysis['created_at'])) ?></td>
                                 <td><?= $analysis['processing_time'] ?>秒</td>
                                 <td>
-                                    <a href="/analysis/result/<?= $analysis['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                    <a href="<?= url('analysis/result/' . $analysis['id']) ?>" class="btn btn-sm btn-outline-primary">
                                         結果表示
                                     </a>
                                 </td>

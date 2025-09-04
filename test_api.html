@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <button id="test-api">Test API</button>
+    <div id="result"></div>
+
+    <script>
+    document.getElementById('test-api').addEventListener('click', function() {
+        const formData = new FormData();
+        formData.append('name', 'Test Site');
+        formData.append('domain', 'example.com');
+        formData.append('description', 'Test description');
+        
+        fetch('https://mizy.sakura.ne.jp/topicla09/api/sites', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Status:', response.status);
+            console.log('Headers:', response.headers.get('content-type'));
+            return response.text();
+        })
+        .then(text => {
+            console.log('Response:', text);
+            document.getElementById('result').innerHTML = '<pre>' + text + '</pre>';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('result').innerHTML = 'Error: ' + error.message;
+        });
+    });
+    </script>
+</body>
+</html>

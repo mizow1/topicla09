@@ -1,7 +1,7 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/database.php';
-require_once '../includes/gemini_client.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/database.php';
+require_once __DIR__ . '/../includes/gemini_client.php';
 
 $db = Database::getInstance();
 
@@ -10,13 +10,40 @@ switch ($action) {
     case '':
         $sites = $db->fetchAll("SELECT * FROM sites ORDER BY name ASC");
         $siteId = $_GET['site_id'] ?? null;
-        render('analysis/index', ['sites' => $sites, 'selectedSiteId' => $siteId]);
+        
+        // 最近の分析履歴を取得
+        $recentAnalyses = $db->fetchAll("
+            SELECT ah.*, s.name as site_name, s.domain,
+                   COUNT(sr.id) as recommendation_count
+            FROM analysis_history ah 
+            JOIN sites s ON ah.site_id = s.id 
+            LEFT JOIN seo_recommendations sr ON ah.id = sr.analysis_id
+            WHERE ah.status = 'completed'
+            GROUP BY ah.id
+            ORDER BY ah.created_at DESC 
+            LIMIT 5
+        ");
+        
+        render('analysis/index', [
+            'sites' => $sites, 
+            'selectedSiteId' => $siteId,
+            'recentAnalyses' => $recentAnalyses
+        ]);
         break;
         
     case 'run':
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $url = trim($_POST['url'] ?? '');
-            $siteId = intval($_POST['site_id'] ?? 0);
+            // JSON形式またはPOSTデータに対応
+            if (isset($_POST['url'])) {
+                // FormDataの場合
+                $url = trim($_POST['url'] ?? '');
+                $siteId = intval($_POST['site_id'] ?? 0);
+            } else {
+                // JSONの場合
+                $input = json_decode(file_get_contents('php://input'), true);
+                $url = trim($input['url'] ?? '');
+                $siteId = intval($input['site_id'] ?? 0);
+            }
             
             if (empty($url) || !$siteId) {
                 jsonResponse(['success' => false, 'error' => 'URLとサイトが必要です']);
@@ -67,7 +94,12 @@ switch ($action) {
                     );
                 }
                 
-                jsonResponse(['success' => true, 'analysis_id' => $analysisId]);
+                // 分析結果をレスポンスに含める
+                jsonResponse([
+                    'success' => true, 
+                    'analysis_id' => $analysisId,
+                    'results' => $analysisResults
+                ]);
                 
             } catch (Exception $e) {
                 $db->execute(
@@ -83,7 +115,7 @@ switch ($action) {
     case 'result':
         $analysisId = intval($route[2] ?? 0);
         if (!$analysisId) {
-            redirect('/analysis');
+            redirect(url('analysis'));
         }
         
         $analysis = $db->fetchOne("
@@ -95,7 +127,7 @@ switch ($action) {
         
         if (!$analysis) {
             $_SESSION['error'] = '分析結果が見つかりません';
-            redirect('/analysis');
+            redirect(url('analysis'));
         }
         
         $recommendations = $db->fetchAll("
@@ -173,7 +205,7 @@ switch ($action) {
         break;
         
     default:
-        redirect('/analysis');
+        redirect(url('analysis'));
         break;
 }
 ?>

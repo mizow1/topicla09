@@ -13,7 +13,7 @@
             <div class="alert alert-warning" role="alert">
                 <h5>サイトが登録されていません</h5>
                 <p>SEO分析を開始するには、まずサイトを登録してください。</p>
-                <a href="/sites/add" class="btn btn-primary">サイトを登録</a>
+                <a href="<?= url('sites/add') ?>" class="btn btn-primary">サイトを登録</a>
             </div>
         <?php else: ?>
             <div class="card">
@@ -83,23 +83,10 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4>分析履歴</h4>
-                <a href="/analysis/history" class="btn btn-outline-secondary">すべて表示</a>
+                <a href="<?= url('analysis/history') ?>" class="btn btn-outline-secondary">すべて表示</a>
             </div>
             
-            <?php
-            $recentAnalyses = $db->fetchAll("
-                SELECT ah.*, s.name as site_name, s.domain,
-                       COUNT(sr.id) as recommendation_count
-                FROM analysis_history ah 
-                JOIN sites s ON ah.site_id = s.id 
-                LEFT JOIN seo_recommendations sr ON ah.id = sr.analysis_id
-                WHERE ah.status = 'completed'
-                GROUP BY ah.id
-                ORDER BY ah.created_at DESC 
-                LIMIT 5
-            ");
-            
-            if (!empty($recentAnalyses)): ?>
+            <?php if (!empty($recentAnalyses)): ?>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
@@ -130,7 +117,7 @@
                                     <td><?= date('Y/m/d H:i', strtotime($analysis['created_at'])) ?></td>
                                     <td><?= $analysis['processing_time'] ?>秒</td>
                                     <td>
-                                        <a href="/analysis/result/<?= $analysis['id'] ?>" class="btn btn-sm btn-primary">
+                                        <a href="<?= url('analysis/result/' . $analysis['id']) ?>" class="btn btn-sm btn-primary">
                                             結果を見る
                                         </a>
                                     </td>

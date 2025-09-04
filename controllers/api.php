@@ -1,6 +1,23 @@
 <?php
-require_once '../includes/config.php';
-require_once '../includes/database.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/database.php';
+
+// ルート情報を取得
+$url = $_GET['url'] ?? '';
+$route = explode('/', trim($url, '/'));
+$controller = $route[0] ?? 'home';
+$action = $route[1] ?? 'index';
+
+// デバッグ情報をログに出力
+error_log("API Request - Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("API Request - URL: " . $url);
+error_log("API Request - Action: " . $action);
+error_log("API Request - Route: " . print_r($route, true));
+
+// APIコントローラーが実際に呼ばれているかテスト
+if ($action === 'sites' && $method === 'POST') {
+    error_log("API Controller: Processing sites POST request");
+}
 
 header('Content-Type: application/json');
 
@@ -45,10 +62,19 @@ function handleSitesAPI($db, $method) {
             break;
             
         case 'POST':
-            $input = json_decode(file_get_contents('php://input'), true);
-            $name = trim($input['name'] ?? '');
-            $domain = trim($input['domain'] ?? '');
-            $description = trim($input['description'] ?? '');
+            // FormDataまたはJSONに対応
+            if (isset($_POST['name'])) {
+                // FormDataの場合
+                $name = trim($_POST['name'] ?? '');
+                $domain = trim($_POST['domain'] ?? '');
+                $description = trim($_POST['description'] ?? '');
+            } else {
+                // JSONの場合
+                $input = json_decode(file_get_contents('php://input'), true);
+                $name = trim($input['name'] ?? '');
+                $domain = trim($input['domain'] ?? '');
+                $description = trim($input['description'] ?? '');
+            }
             
             if (empty($name) || empty($domain)) {
                 http_response_code(400);

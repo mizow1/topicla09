@@ -1,6 +1,6 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/analysis">SEO分析</a></li>
+        <li class="breadcrumb-item"><a href="<?= url('analysis') ?>">SEO分析</a></li>
         <li class="breadcrumb-item active">分析結果</li>
     </ol>
 </nav>
@@ -20,7 +20,7 @@
         </small>
     </div>
     <div>
-        <a href="/analysis?site_id=<?= $analysis['site_id'] ?>" class="btn btn-primary">
+        <a href="<?= url('analysis?site_id=' . $analysis['site_id']) ?>" class="btn btn-primary">
             新しい分析を実行
         </a>
     </div>
@@ -189,8 +189,8 @@
 <?php endif; ?>
 
 <div class="text-center mt-5">
-    <a href="/analysis" class="btn btn-primary me-2">別のページを分析</a>
-    <a href="/analysis/history" class="btn btn-outline-secondary">分析履歴を見る</a>
+    <a href="<?= url('analysis') ?>" class="btn btn-primary me-2">別のページを分析</a>
+    <a href="<?= url('analysis/history') ?>" class="btn btn-outline-secondary">分析履歴を見る</a>
 </div>
 
 <script>

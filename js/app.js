@@ -37,17 +37,47 @@ const App = {
     runAnalysis: function(url, siteId) {
         this.showLoading('#analysis-results');
         
-        fetch('/api/analyze', {
+        fetch('https://mizy.sakura.ne.jp/topicla09/analysis/run', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ url: url, site_id: siteId })
         })
-        .then(response => response.json())
+        .then(async response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers.get('content-type'));
+            
+            if (!response.ok) {
+                const text = await response.text();
+                console.log('Error response:', text);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // レスポンスがJSONかチェック
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.log('Non-JSON response:', text);
+                throw new Error('サーバーからの応答が正しくありません');
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Analysis response:', data);
             if (data.success) {
-                this.displayAnalysisResults(data.results);
+                // 分析結果が配列かチェック
+                const results = data.results || [];
+                if (Array.isArray(results)) {
+                    this.displayAnalysisResults(results);
+                } else {
+                    // resultsがない場合は分析ID経由で結果を取得
+                    if (data.analysis_id) {
+                        this.fetchAnalysisResults(data.analysis_id);
+                    } else {
+                        this.showError('分析結果の形式が正しくありません');
+                    }
+                }
             } else {
                 this.showError(data.error || '分析エラーが発生しました');
             }
@@ -58,8 +88,36 @@ const App = {
         });
     },
     
+    // 分析ID経由で結果を取得
+    fetchAnalysisResults: function(analysisId) {
+        fetch(`https://mizy.sakura.ne.jp/topicla09/api/analysis/${analysisId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.recommendations) {
+                this.displayAnalysisResults(data.recommendations);
+            } else {
+                this.showError('分析結果の取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch analysis results error:', error);
+            this.showError('分析結果の取得中にエラーが発生しました');
+        });
+    },
+
     // 分析結果表示
     displayAnalysisResults: function(results) {
+        // 安全性チェック
+        if (!results || !Array.isArray(results)) {
+            this.showError('分析結果が見つかりません');
+            return;
+        }
+        
+        if (results.length === 0) {
+            document.querySelector('#analysis-results').innerHTML = '<p class="text-muted">分析結果がありません。</p>';
+            return;
+        }
+        
         let html = '<div class="analysis-results">';
         
         results.forEach(result => {
@@ -134,11 +192,29 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('/api/sites', {
+            fetch('https://mizy.sakura.ne.jp/topicla09/api/sites', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(async response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers.get('content-type'));
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.log('Error response:', text);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // レスポンスがJSONかチェック
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.log('Non-JSON response:', text);
+                    throw new Error('サーバーからの応答が正しくありません');
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     App.showSuccess('サイトが追加されました');
@@ -149,7 +225,11 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Site creation error:', error);
-                App.showError('サイト追加中にエラーが発生しました');
+                if (error.message.includes('status: 404')) {
+                    App.showError('APIエンドポイントが見つかりません');
+                } else {
+                    App.showError(error.message || 'サイト追加中にエラーが発生しました');
+                }
             });
         });
     }

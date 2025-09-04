@@ -44,7 +44,7 @@
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="/sites" class="btn btn-secondary me-md-2">キャンセル</a>
+                        <a href="<?= url('sites') ?>" class="btn btn-secondary me-md-2">キャンセル</a>
                         <button type="submit" class="btn btn-primary">サイトを追加</button>
                     </div>
                 </form>

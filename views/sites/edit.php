@@ -49,31 +49,21 @@
                             </div>
                         </div>
                         <div class="mt-2">
-                            <a href="/sites/analytics/<?= $site['id'] ?>" class="btn btn-sm btn-outline-primary">
+                            <a href="<?= url('sites/analytics/' . $site['id']) ?>" class="btn btn-sm btn-outline-primary">
                                 連携設定を変更
                             </a>
                         </div>
                     </div>
                     
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <a href="/sites" class="btn btn-secondary me-md-2">キャンセル</a>
+                        <a href="<?= url('sites') ?>" class="btn btn-secondary me-md-2">キャンセル</a>
                         <button type="submit" class="btn btn-primary">更新</button>
                     </div>
                 </form>
             </div>
         </div>
         
-        <?php
-        // このサイトの分析履歴を表示
-        $db = Database::getInstance();
-        $analyses = $db->fetchAll("
-            SELECT * FROM analysis_history 
-            WHERE site_id = ? 
-            ORDER BY created_at DESC 
-            LIMIT 5
-        ", [$site['id']]);
-        
-        if (!empty($analyses)): ?>
+        <?php if (!empty($analyses)): ?>
             <div class="card mt-4">
                 <div class="card-header">
                     <h6 class="mb-0">最近の分析履歴</h6>
@@ -105,7 +95,7 @@
                                         <td><?= date('m/d H:i', strtotime($analysis['created_at'])) ?></td>
                                         <td>
                                             <?php if ($analysis['status'] === 'completed'): ?>
-                                                <a href="/analysis/result/<?= $analysis['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                                <a href="<?= url('analysis/result/' . $analysis['id']) ?>" class="btn btn-sm btn-outline-primary">
                                                     結果
                                                 </a>
                                             <?php endif; ?>
@@ -137,7 +127,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                <form method="POST" action="/sites/delete/<?= $site['id'] ?>" style="display: inline;">
+                <form method="POST" action="<?= url('sites/delete/' . $site['id']) ?>" style="display: inline;">
                     <button type="submit" class="btn btn-danger">削除実行</button>
                 </form>
             </div>

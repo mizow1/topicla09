@@ -37,7 +37,7 @@ const App = {
     runAnalysis: function(url, siteId) {
         this.showLoading('#analysis-results');
         
-        fetch('/api/analyze', {
+        fetch('https://mizy.sakura.ne.jp/topicla09/api/analyze', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('/api/sites', {
+            fetch('https://mizy.sakura.ne.jp/topicla09/api/sites', {
                 method: 'POST',
                 body: formData
             })
