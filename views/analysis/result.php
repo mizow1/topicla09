@@ -284,6 +284,68 @@
     <a href="<?= url('analysis/history') ?>" class="btn btn-outline-secondary">分析履歴を見る</a>
 </div>
 
+<!-- 記事構成モーダル -->
+<div class="modal fade" id="structureModal" tabindex="-1" aria-labelledby="structureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="structureModalLabel">📝 記事構成提案</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 id="structureModalSubtitle" class="text-muted mb-0"></h6>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="regenerateStructuresBtn">
+                        🔄 新しい構成案を生成
+                    </button>
+                </div>
+                <div id="structureProposals" class="row"></div>
+                <div id="structureLoadingSection" class="text-center p-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">構成案生成中...</span>
+                    </div>
+                    <p class="mt-2">記事構成案を生成中です...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 記事本文モーダル -->
+<div class="modal fade" id="contentModal" tabindex="-1" aria-labelledby="contentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contentModalLabel">✍️ 記事本文</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>📖 見出し構造:</h6>
+                    <pre id="contentHeadingStructure" class="bg-light p-2 border rounded" style="white-space: pre-wrap;"></pre>
+                </div>
+                <div class="mb-3">
+                    <h6>✍️ 本文内容（HTML表示）:</h6>
+                    <div id="contentHtmlDisplay" class="border rounded p-3" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+                <div class="mb-3">
+                    <h6>📄 本文内容（Markdown形式）:</h6>
+                    <pre id="contentMarkdownDisplay" class="bg-light p-2 border rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="copyMarkdownBtn">
+                    📋 Markdownをコピー
+                </button>
+                <button type="button" class="btn btn-secondary" id="copyAllContentBtn">
+                    📋 構造+本文をコピー
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // フィルタリング機能
 function filterRecommendations() {
@@ -887,6 +949,178 @@ function copyClusterToClipboard(proposalJson) {
 
 // 既存の記事構成とコンテンツ生成の変数とモーダル機能を再利用
 let currentStructures = [];
+let currentArticleTitle = '';
+
+// 記事構成再生成ボタンのイベント
+document.getElementById('regenerateStructuresBtn').addEventListener('click', function() {
+    if (currentArticleTitle) {
+        generateArticleStructuresFromCluster(currentArticleTitle, true);
+    }
+});
+
+// 記事構成表示
+function displayStructures(structures, articleTitle) {
+    const container = document.getElementById('structureProposals');
+    container.innerHTML = '';
+    
+    structures.forEach((structure, index) => {
+        const card = createStructureCard(structure, index, articleTitle);
+        container.appendChild(card);
+    });
+}
+
+// 記事構成カード作成
+function createStructureCard(structure, index, articleTitle) {
+    const col = document.createElement('div');
+    col.className = 'col-md-6 mb-3';
+    
+    col.innerHTML = `
+        <div class="card border-success">
+            <div class="card-header bg-light">
+                <div class="d-flex align-items-center">
+                    <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 30px; height: 30px; font-weight: bold;">
+                        ${index + 1}
+                    </div>
+                    <div>
+                        <h6 class="mb-0">構成案${index + 1}</h6>
+                        <small class="text-muted">${structure.type || '基本構成'}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="bg-light p-3 rounded mb-3" style="font-family: 'Consolas', 'Monaco', monospace; white-space: pre-line; line-height: 1.4;">
+${structure.headings}
+                </div>
+                
+                <div class="text-center">
+                    <button class="btn btn-primary btn-sm me-2" onclick="generateArticleContentFromStructure('${articleTitle.replace(/'/g, "\\'")}', \`${structure.headings.replace(/`/g, '\\`')}\`)">
+                        ✍️ 本文を作成
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard(\`${structure.headings.replace(/`/g, '\\`')}\`)">
+                        📋 構成をコピー
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return col;
+}
+
+// 構成ローディング表示
+function showStructureLoading() {
+    document.getElementById('structureLoadingSection').style.display = 'block';
+    document.getElementById('structureProposals').style.display = 'none';
+}
+
+// 構成ローディング非表示
+function hideStructureLoading() {
+    document.getElementById('structureLoadingSection').style.display = 'none';
+    document.getElementById('structureProposals').style.display = 'block';
+}
+
+// 記事本文生成（構成から）
+async function generateArticleContentFromStructure(articleTitle, headingStructure) {
+    document.getElementById('contentModalLabel').textContent = '✍️ 記事本文';
+    document.getElementById('contentHeadingStructure').textContent = headingStructure;
+    document.getElementById('contentHtmlDisplay').innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">本文生成中...</span></div><p class="mt-2">記事本文を生成中です...</p></div>';
+    document.getElementById('contentMarkdownDisplay').textContent = '';
+    
+    // モーダル表示
+    const modal = new bootstrap.Modal(document.getElementById('contentModal'));
+    modal.show();
+    
+    try {
+        const response = await fetch('<?= url("analysis/generate-article-content") ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                articleTitle: articleTitle,
+                headingStructure: headingStructure,
+                topic: document.getElementById('extractedKeywords').textContent.replace('抽出キーワード: ', '')
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const htmlContent = markdownToHtml(data.content);
+            document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
+            document.getElementById('contentMarkdownDisplay').textContent = data.content;
+        } else {
+            document.getElementById('contentHtmlDisplay').innerHTML = '<div class="alert alert-danger">本文生成に失敗しました: ' + (data.error || '不明なエラー') + '</div>';
+        }
+    } catch (error) {
+        console.error('本文生成エラー:', error);
+        document.getElementById('contentHtmlDisplay').innerHTML = '<div class="alert alert-danger">本文生成中にエラーが発生しました</div>';
+    }
+}
+
+// モーダル内のコピーボタンイベント
+document.getElementById('copyMarkdownBtn').addEventListener('click', function() {
+    const markdown = document.getElementById('contentMarkdownDisplay').textContent;
+    if (markdown) {
+        copyToClipboard(markdown);
+    } else {
+        alert('コピーするコンテンツがありません');
+    }
+});
+
+document.getElementById('copyAllContentBtn').addEventListener('click', function() {
+    const structure = document.getElementById('contentHeadingStructure').textContent;
+    const markdown = document.getElementById('contentMarkdownDisplay').textContent;
+    if (structure && markdown) {
+        const combined = structure + '\n\n' + markdown;
+        copyToClipboard(combined);
+    } else {
+        alert('コピーするコンテンツがありません');
+    }
+});
+
+// 記事構成生成（クラスター用）を修正
+async function generateArticleStructuresFromCluster(articleTitle, isRegenerate = false) {
+    currentArticleTitle = articleTitle; // 現在の記事タイトルを保存
+    
+    document.getElementById('structureModalLabel').textContent = '📝 記事構成提案';
+    document.getElementById('structureModalSubtitle').textContent = `記事タイトル: ${articleTitle}`;
+    
+    // モーダル表示
+    const modal = new bootstrap.Modal(document.getElementById('structureModal'));
+    modal.show();
+    
+    showStructureLoading();
+    
+    try {
+        const response = await fetch('<?= url("analysis/generate-article-structures") ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                articleTitle: articleTitle,
+                topic: document.getElementById('extractedKeywords').textContent.replace('抽出キーワード: ', ''),
+                regenerate: isRegenerate,
+                currentStructures: isRegenerate ? currentStructures : []
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentStructures = data.structures;
+            displayStructures(data.structures, articleTitle);
+        } else {
+            alert('構成生成に失敗しました: ' + (data.error || '不明なエラー'));
+        }
+    } catch (error) {
+        console.error('構成生成エラー:', error);
+        alert('構成生成中にエラーが発生しました');
+    } finally {
+        hideStructureLoading();
+    }
+}
 
 </script>
 
