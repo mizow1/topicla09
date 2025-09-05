@@ -140,7 +140,22 @@ switch ($action) {
                     WHEN 'medium' THEN 2 
                     WHEN 'low' THEN 3 
                 END,
-                category, title
+                CASE category
+                    WHEN 'meta' THEN 1
+                    WHEN 'technical' THEN 2
+                    WHEN 'content' THEN 3
+                    WHEN 'structure' THEN 4
+                    WHEN 'performance' THEN 5
+                    WHEN 'mobile' THEN 6
+                    WHEN 'accessibility' THEN 7
+                    ELSE 8
+                END,
+                CASE 
+                    WHEN title LIKE '%title%' OR title LIKE '%タイトル%' THEN 1
+                    WHEN title LIKE '%meta description%' OR title LIKE '%メタディスクリプション%' THEN 2
+                    ELSE 3
+                END,
+                title
         ", [$analysisId]);
         
         // proposalsをJSONデコード
