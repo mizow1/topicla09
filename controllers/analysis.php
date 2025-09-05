@@ -148,6 +148,32 @@ switch ($action) {
         ]);
         break;
         
+    case 'regenerate-proposals':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            if (!$input || empty($input['category']) || empty($input['currentProposals'])) {
+                jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
+            }
+            
+            try {
+                $geminiClient = new GeminiClient();
+                $newProposals = $geminiClient->regenerateProposals(
+                    $input['category'] . ': ' . ($input['title'] ?? ''),
+                    $input['currentProposals']
+                );
+                
+                jsonResponse([
+                    'success' => true,
+                    'proposals' => $newProposals
+                ]);
+                
+            } catch (Exception $e) {
+                jsonResponse(['success' => false, 'error' => '提案生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+
     case 'history':
         $page = max(1, intval($_GET['page'] ?? 1));
         $limit = 20;

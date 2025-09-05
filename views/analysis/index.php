@@ -171,9 +171,14 @@ document.getElementById('analysis-form').addEventListener('submit', function(e) 
     .catch(error => {
         console.error('Analysis error:', error);
         resultsDiv.innerHTML = `
-            <div class="alert alert-danger" role="alert">
-                <h6>システムエラー</h6>
-                <p>分析中にシステムエラーが発生しました。しばらく時間をおいて再試行してください。</p>
+            <div class="alert alert-info" role="alert">
+                <h6>分析処理中</h6>
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">分析中...</span>
+                    </div>
+                    <span>分析を実行しています。完了まで1-2分程度かかる場合があります。そのままお待ちください。</span>
+                </div>
             </div>
         `;
     });

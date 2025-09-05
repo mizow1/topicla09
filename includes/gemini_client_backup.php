@@ -56,100 +56,41 @@ class GeminiClient {
 以下のHTMLコンテンツを分析してください:
 " . mb_substr($content, 0, 50000) . "
 
-## 重要な指示：
-
-**必ず具体的で実装可能な内容にしてください:**
-
-1. **titleタグの最適化**: 現在のtitleタグを分析し、5つの具体的な代替案を提案（キーワードを含んだ60文字以内の具体例）
-2. **meta descriptionの最適化**: 現在のmeta descriptionを分析し、5つの具体的な代替案を提案（160文字以内の具体例）
-3. **見出し構造の最適化**: 現在の見出し（h1, h2, h3等）を分析し、キーワードを含んだ5つの具体的な見出し構成案を提案
-4. **内部リンクの最適化**: ページ内容を分析し、どの既存記事・ページへのリンクを、ページ内のどこに追加すべきかを具体的に指定
-5. **画像最適化**: 画像を分析し、「WebP形式、300KB以下に圧縮」のような具体的なファイル形式とサイズを提案
-
-分析結果は以下のJSONフォーマットで出力してください。必ず有効なJSONとして出力し、各提案は5案ずつ含めてください:
+分析結果は以下のJSONフォーマットで出力してください。必ず有効なJSONとして出力し、各提案は具体的で実装可能なものにしてください:
 
 ```json
 [
   {
     \"category\": \"meta\",
     \"priority\": \"high\",
-    \"title\": \"titleタグの最適化\",
-    \"conclusion\": \"現在のtitle: '〜' → 以下の5案から選択:\\n1. 具体的なtitle案1（55文字）\\n2. 具体的なtitle案2（58文字）\\n3. 具体的なtitle案3（52文字）\\n4. 具体的なtitle案4（60文字）\\n5. 具体的なtitle案5（50文字）\",
-    \"explanation\": \"現在のtitleタグが〜という問題があるため、キーワード「〜」を含み、より検索意図に合致する内容に変更することで〜の効果が期待できます。\",
-    \"implementation\": \"<title>選択したtitle案をここに設定</title>\",
-    \"difficulty\": \"easy\",
-    \"estimated_hours\": 0.5,
-    \"proposals\": [
-      \"具体的なtitle案1\",
-      \"具体的なtitle案2\", 
-      \"具体的なtitle案3\",
-      \"具体的なtitle案4\",
-      \"具体的なtitle案5\"
-    ]
-  },
-  {
-    \"category\": \"meta\",
-    \"priority\": \"high\",
-    \"title\": \"meta descriptionの最適化\",
-    \"conclusion\": \"現在のmeta description: '〜' → 以下の5案から選択:\\n1. 具体的なdescription案1（155文字）\\n2. 具体的なdescription案2（160文字）\\n3. 具体的なdescription案3（150文字）\\n4. 具体的なdescription案4（158文字）\\n5. 具体的なdescription案5（152文字）\",
-    \"explanation\": \"詳細説明\",
-    \"implementation\": \"<meta name=\\\"description\\\" content=\\\"選択したdescription案\\\">\",
-    \"difficulty\": \"easy\",
-    \"estimated_hours\": 0.5,
-    \"proposals\": [
-      \"具体的なdescription案1\",
-      \"具体的なdescription案2\",
-      \"具体的なdescription案3\",
-      \"具体的なdescription案4\",
-      \"具体的なdescription案5\"
-    ]
-  },
-  {
-    \"category\": \"content\",
-    \"priority\": \"high\",
-    \"title\": \"見出し構造の最適化\",
-    \"conclusion\": \"現在の見出し構造を以下5案に最適化:\\n1. h1: 〜, h2: 〜, h3: 〜\\n2. h1: 〜, h2: 〜, h3: 〜\\n3. h1: 〜, h2: 〜, h3: 〜\\n4. h1: 〜, h2: 〜, h3: 〜\\n5. h1: 〜, h2: 〜, h3: 〜\",
-    \"explanation\": \"詳細説明\",
-    \"implementation\": \"HTMLの見出しタグの実装例\",
-    \"difficulty\": \"medium\",
-    \"estimated_hours\": 2.0,
-    \"proposals\": [
-      \"見出し構成案1の詳細\",
-      \"見出し構成案2の詳細\",
-      \"見出し構成案3の詳細\",
-      \"見出し構成案4の詳細\",
-      \"見出し構成案5の詳細\"
-    ]
-  },
-  {
-    \"category\": \"structure\",
-    \"priority\": \"medium\",
-    \"title\": \"内部リンクの最適化\",
-    \"conclusion\": \"以下の箇所に関連記事へのリンクを追加：\\n1. 第2段落の後に『〜に関する記事』へのリンク（/related-page-1）\\n2. 〜の章の最後に『〜について詳しくはこちら』リンク（/detailed-guide）\\n3. 〜\",
-    \"explanation\": \"詳細説明\",
-    \"implementation\": \"<a href=\\\"/related-article\\\">関連記事タイトル</a>\",
-    \"difficulty\": \"easy\",
-    \"estimated_hours\": 1.0
-  },
-  {
-    \"category\": \"technical\",
-    \"priority\": \"medium\", 
-    \"title\": \"画像最適化\",
-    \"conclusion\": \"以下の画像を最適化：\\n1. hero-image.jpg → WebP形式、300KB以下に圧縮\\n2. content-image.png → WebP形式、150KB以下に圧縮\\n3. thumbnail.jpg → WebP形式、50KB以下に圧縮\",
-    \"explanation\": \"詳細説明\",
-    \"implementation\": \"<img src=\\\"image.webp\\\" alt=\\\"代替テキスト\\\" width=\\\"600\\\" height=\\\"400\\\" loading=\\\"lazy\\\">\",
-    \"difficulty\": \"medium\",
-    \"estimated_hours\": 2.0
+    \"title\": \"改善提案のタイトル\",
+    \"conclusion\": \"結論（コピペで実装できる具体的な内容）\",
+    \"explanation\": \"詳細説明（なぜこの改善が必要か、どのような効果が期待できるか）\",
+    \"implementation\": \"実装用のHTMLコードまたはCSS（該当する場合）\",
+    \"difficulty\": \"easy|medium|hard\",
+    \"estimated_hours\": 1.5
   }
 ]
 ```
 
-**必須要件：**
-- titleとmeta descriptionの提案は必ず5案ずつ含める
-- 見出し構造も5つの異なる構成案を提案
-- 内部リンクは具体的なリンク先とページ内の挿入位置を明記
-- 画像最適化は具体的なファイル形式（WebP等）と目標サイズを記載
-- conclusionフィールドには実装可能な具体的内容のみを記載
+分析観点：
+1. **meta要素**: title, description, keywords, OGタグ等の最適化
+2. **technical**: 表示速度、画像最適化、構造化データ等
+3. **content**: コンテンツの質、キーワード密度、見出し構造等
+4. **performance**: ページ読み込み速度、CLS/LCP等のCore Web Vitals
+5. **mobile**: モバイルフレンドリー、レスポンシブ対応
+6. **accessibility**: アクセシビリティの向上
+7. **structure**: URL構造、内部リンク、サイトマップ等
+
+優先度の判定基準：
+- **high**: SEO効果が高く、すぐに実装すべきもの
+- **medium**: 中程度の効果、計画的に実装
+- **low**: 長期的な改善、余裕があるときに実装
+
+実装難易度の判定基準：
+- **easy**: 1時間以内で完了
+- **medium**: 1-4時間程度
+- **hard**: 4時間以上または技術的に複雑
 
 必ずJSONのみを返してください。説明文は含めないでください。";
 
@@ -262,8 +203,7 @@ class GeminiClient {
                 'explanation' => $result['explanation'],
                 'implementation' => $result['implementation'] ?? null,
                 'difficulty' => in_array($result['difficulty'] ?? '', ['easy', 'medium', 'hard']) ? $result['difficulty'] : 'medium',
-                'estimated_hours' => is_numeric($result['estimated_hours'] ?? '') ? floatval($result['estimated_hours']) : 1.0,
-                'proposals' => $result['proposals'] ?? []
+                'estimated_hours' => is_numeric($result['estimated_hours'] ?? '') ? floatval($result['estimated_hours']) : 1.0
             ];
         }
         
@@ -277,42 +217,6 @@ class GeminiClient {
         });
         
         return $validatedResults;
-    }
-    
-    public function regenerateProposals($category, $currentProposals) {
-        $prompt = "あなたはSEO専門家です。以下のカテゴリについて、既存の提案と重複しない新しい5つの提案を生成してください。
-
-カテゴリ: {$category}
-既存の提案: " . json_encode($currentProposals, JSON_UNESCAPED_UNICODE) . "
-
-新しい5つの提案をJSONフォーマットで出力してください:
-```json
-[
-  \"新しい提案1\",
-  \"新しい提案2\",
-  \"新しい提案3\",
-  \"新しい提案4\",
-  \"新しい提案5\"
-]
-```";
-
-        $response = $this->callGeminiAPI($prompt);
-        
-        $jsonStart = strpos($response, '[');
-        $jsonEnd = strrpos($response, ']');
-        
-        if ($jsonStart === false || $jsonEnd === false) {
-            return $currentProposals;
-        }
-        
-        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
-        $newProposals = json_decode($jsonString, true);
-        
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($newProposals)) {
-            return $currentProposals;
-        }
-        
-        return $newProposals;
     }
 }
 ?>

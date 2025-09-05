@@ -150,13 +150,41 @@
                             <div class="col-md-6">
                                 <h6 class="text-primary">📌 結論</h6>
                                 <div class="bg-light p-3 rounded mb-3">
-                                    <?= nl2br(htmlspecialchars($rec['conclusion'])) ?>
+                                    <?= nl2br($rec['conclusion']) ?>
                                 </div>
+                                
+                                <?php if (!empty($rec['proposals']) && is_array($rec['proposals'])): ?>
+                                <h6 class="text-success">💡 提案オプション（5案）</h6>
+                                <div class="proposal-options mb-3" data-rec-id="<?= $index ?>">
+                                    <ol class="list-group list-group-numbered">
+                                        <?php foreach ($rec['proposals'] as $proposalIndex => $proposal): ?>
+                                        <li class="list-group-item d-flex justify-content-between align-items-start">
+                                            <div class="ms-2 me-auto">
+                                                <?= htmlspecialchars($proposal) ?>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary select-proposal" 
+                                                    data-proposal="<?= htmlspecialchars($proposal) ?>"
+                                                    data-rec-id="<?= $index ?>">
+                                                選択
+                                            </button>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ol>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-secondary regenerate-proposals" 
+                                                data-category="<?= htmlspecialchars($rec['category']) ?>"
+                                                data-title="<?= htmlspecialchars($rec['title']) ?>"
+                                                data-rec-id="<?= $index ?>">
+                                            🔄 別案を生成
+                                        </button>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="text-info">💡 詳細説明</h6>
                                 <div class="mb-3">
-                                    <?= nl2br(htmlspecialchars($rec['explanation'])) ?>
+                                    <?= nl2br($rec['explanation']) ?>
                                 </div>
                             </div>
                         </div>
@@ -264,6 +292,92 @@ function fallbackCopyCode(text, button) {
     
     document.body.removeChild(textArea);
 }
+
+// 提案選択機能
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('select-proposal')) {
+        const proposal = e.target.dataset.proposal;
+        const recId = e.target.dataset.recId;
+        
+        // 選択された提案をハイライト
+        const container = e.target.closest('.proposal-options');
+        container.querySelectorAll('.list-group-item').forEach(item => {
+            item.classList.remove('list-group-item-primary');
+        });
+        e.target.closest('.list-group-item').classList.add('list-group-item-primary');
+        
+        // コピー機能
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(proposal).then(() => {
+                e.target.textContent = '✅ コピー済み';
+                setTimeout(() => {
+                    e.target.textContent = '選択';
+                }, 2000);
+            });
+        }
+    }
+    
+    if (e.target.classList.contains('regenerate-proposals')) {
+        const button = e.target;
+        const recId = button.dataset.recId;
+        const category = button.dataset.category;
+        const title = button.dataset.title;
+        const container = button.closest('.proposal-options');
+        
+        button.disabled = true;
+        button.textContent = '🔄 生成中...';
+        
+        // 現在の提案を取得
+        const currentProposals = [];
+        container.querySelectorAll('.list-group-item .ms-2').forEach(item => {
+            currentProposals.push(item.textContent.trim());
+        });
+        
+        // 新しい提案を生成
+        fetch('/analysis/regenerate-proposals', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                category: category,
+                title: title,
+                currentProposals: currentProposals
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.proposals) {
+                // 提案リストを更新
+                const listGroup = container.querySelector('.list-group');
+                listGroup.innerHTML = '';
+                
+                data.proposals.forEach((proposal, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-start';
+                    li.innerHTML = `
+                        <div class="ms-2 me-auto">
+                            ${proposal}
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary select-proposal" 
+                                data-proposal="${proposal}"
+                                data-rec-id="${recId}">
+                            選択
+                        </button>
+                    `;
+                    listGroup.appendChild(li);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('再提案生成エラー:', error);
+        })
+        .finally(() => {
+            button.disabled = false;
+            button.textContent = '🔄 別案を生成';
+        });
+    }
+});
 
 // ページロード時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', function() {
