@@ -169,7 +169,8 @@ switch ($action) {
             try {
                 $geminiClient = new GeminiClient();
                 $newProposals = $geminiClient->regenerateProposals(
-                    $input['category'] . ': ' . ($input['title'] ?? ''),
+                    $input['category'],
+                    $input['title'] ?? '',
                     $input['currentProposals']
                 );
                 
@@ -180,6 +181,41 @@ switch ($action) {
                 
             } catch (Exception $e) {
                 jsonResponse(['success' => false, 'error' => '提案生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+
+    case 'generate-content':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // エラー出力をバッファリングしてクリーンなJSONレスポンスを保証
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['headingStructure']) || empty($input['siteUrl'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
+                }
+                
+                // 元ページの内容を取得してコンテキストとして利用
+                $siteUrl = $input['siteUrl'];
+                $headingStructure = $input['headingStructure'];
+                
+                $geminiClient = new GeminiClient();
+                $content = $geminiClient->generateContentFromHeadings($headingStructure, $siteUrl);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'content' => $content,
+                    'headingStructure' => $headingStructure
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '本文作成中にエラーが発生しました: ' . $e->getMessage()]);
             }
         }
         break;
