@@ -79,7 +79,7 @@ switch ($action) {
                 
                 foreach ($analysisResults as $result) {
                     $db->execute(
-                        "INSERT INTO seo_recommendations (analysis_id, category, priority, title, conclusion, explanation, implementation_code, difficulty, estimated_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        "INSERT INTO seo_recommendations (analysis_id, category, priority, title, conclusion, explanation, implementation_code, proposals, difficulty, estimated_hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         [
                             $analysisId,
                             $result['category'] ?? 'technical',
@@ -88,6 +88,7 @@ switch ($action) {
                             $result['conclusion'],
                             $result['explanation'],
                             $result['implementation'] ?? null,
+                            json_encode($result['proposals'] ?? []),
                             $result['difficulty'] ?? 'medium',
                             $result['estimated_hours'] ?? 1.0
                         ]
@@ -141,6 +142,15 @@ switch ($action) {
                 END,
                 category, title
         ", [$analysisId]);
+        
+        // proposalsをJSONデコード
+        foreach ($recommendations as &$rec) {
+            if (!empty($rec['proposals'])) {
+                $rec['proposals'] = json_decode($rec['proposals'], true) ?? [];
+            } else {
+                $rec['proposals'] = [];
+            }
+        }
         
         render('analysis/result', [
             'analysis' => $analysis,

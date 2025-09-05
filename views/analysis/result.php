@@ -153,29 +153,48 @@
                                     <?= nl2br($rec['conclusion']) ?>
                                 </div>
                                 
-                                <?php if (!empty($rec['proposals']) && is_array($rec['proposals'])): ?>
-                                <h6 class="text-success">💡 提案オプション（5案）</h6>
-                                <div class="proposal-options mb-3" data-rec-id="<?= $index ?>">
-                                    <ol class="list-group list-group-numbered">
-                                        <?php foreach ($rec['proposals'] as $proposalIndex => $proposal): ?>
-                                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                                            <div class="ms-2 me-auto">
-                                                <?= htmlspecialchars($proposal) ?>
+                                <?php 
+                                // proposalsデータがない場合、conclusionから提案を抽出
+                                $proposals = [];
+                                if (!empty($rec['proposals']) && is_array($rec['proposals'])) {
+                                    $proposals = $rec['proposals'];
+                                } else {
+                                    // conclusionから数字付きリストを抽出
+                                    if (preg_match_all('/\d+\.\s*([^\n]+)/', $rec['conclusion'], $matches)) {
+                                        $proposals = $matches[1];
+                                    }
+                                }
+                                ?>
+                                
+                                <?php if (!empty($proposals)): ?>
+                                <div class="section-header">
+                                    <span class="section-icon">💡</span>
+                                    <h6 class="text-success">改善提案オプション（<?= count($proposals) ?>案）</h6>
+                                </div>
+                                <div class="proposal-options" data-rec-id="<?= $index ?>">
+                                    <div class="proposal-grid">
+                                        <?php foreach ($proposals as $proposalIndex => $proposal): ?>
+                                        <div class="proposal-card" data-proposal-id="<?= $proposalIndex ?>">
+                                            <div class="proposal-number"><?= $proposalIndex + 1 ?></div>
+                                            <div class="proposal-text">
+                                                <?= nl2br(htmlspecialchars(trim($proposal))) ?>
                                             </div>
-                                            <button class="btn btn-sm btn-outline-primary select-proposal" 
-                                                    data-proposal="<?= htmlspecialchars($proposal) ?>"
-                                                    data-rec-id="<?= $index ?>">
-                                                選択
-                                            </button>
-                                        </li>
+                                            <div class="proposal-actions">
+                                                <button class="proposal-select-btn select-proposal" 
+                                                        data-proposal="<?= htmlspecialchars(trim($proposal)) ?>"
+                                                        data-rec-id="<?= $index ?>">
+                                                    選択
+                                                </button>
+                                            </div>
+                                        </div>
                                         <?php endforeach; ?>
-                                    </ol>
-                                    <div class="mt-2">
-                                        <button class="btn btn-sm btn-outline-secondary regenerate-proposals" 
+                                    </div>
+                                    <div class="proposal-regenerate-section">
+                                        <button class="regenerate-btn regenerate-proposals" 
                                                 data-category="<?= htmlspecialchars($rec['category']) ?>"
                                                 data-title="<?= htmlspecialchars($rec['title']) ?>"
                                                 data-rec-id="<?= $index ?>">
-                                            🔄 別案を生成
+                                            🔄 別の提案を生成
                                         </button>
                                     </div>
                                 </div>
@@ -301,18 +320,23 @@ document.addEventListener('click', function(e) {
         
         // 選択された提案をハイライト
         const container = e.target.closest('.proposal-options');
-        container.querySelectorAll('.list-group-item').forEach(item => {
-            item.classList.remove('list-group-item-primary');
+        container.querySelectorAll('.proposal-card').forEach(card => {
+            card.classList.remove('selected');
         });
-        e.target.closest('.list-group-item').classList.add('list-group-item-primary');
+        e.target.closest('.proposal-card').classList.add('selected');
+        
+        // ボタンテキストを更新
+        container.querySelectorAll('.select-proposal').forEach(btn => {
+            btn.textContent = '選択';
+        });
+        e.target.textContent = '✅ 選択済み';
         
         // コピー機能
         if (navigator.clipboard) {
             navigator.clipboard.writeText(proposal).then(() => {
-                e.target.textContent = '✅ コピー済み';
-                setTimeout(() => {
-                    e.target.textContent = '選択';
-                }, 2000);
+                console.log('提案がクリップボードにコピーされました');
+            }).catch(err => {
+                console.error('コピーに失敗しました:', err);
             });
         }
     }
@@ -329,7 +353,7 @@ document.addEventListener('click', function(e) {
         
         // 現在の提案を取得
         const currentProposals = [];
-        container.querySelectorAll('.list-group-item .ms-2').forEach(item => {
+        container.querySelectorAll('.proposal-text').forEach(item => {
             currentProposals.push(item.textContent.trim());
         });
         
@@ -348,24 +372,28 @@ document.addEventListener('click', function(e) {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.proposals) {
-                // 提案リストを更新
-                const listGroup = container.querySelector('.list-group');
-                listGroup.innerHTML = '';
+                // 提案カードグリッドを更新
+                const proposalGrid = container.querySelector('.proposal-grid');
+                proposalGrid.innerHTML = '';
                 
                 data.proposals.forEach((proposal, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-start';
-                    li.innerHTML = `
-                        <div class="ms-2 me-auto">
-                            ${proposal}
+                    const card = document.createElement('div');
+                    card.className = 'proposal-card';
+                    card.dataset.proposalId = index;
+                    card.innerHTML = `
+                        <div class="proposal-number">${index + 1}</div>
+                        <div class="proposal-text">
+                            ${proposal.replace(/\n/g, '<br>')}
                         </div>
-                        <button class="btn btn-sm btn-outline-primary select-proposal" 
-                                data-proposal="${proposal}"
-                                data-rec-id="${recId}">
-                            選択
-                        </button>
+                        <div class="proposal-actions">
+                            <button class="proposal-select-btn select-proposal" 
+                                    data-proposal="${proposal}"
+                                    data-rec-id="${recId}">
+                                選択
+                            </button>
+                        </div>
                     `;
-                    listGroup.appendChild(li);
+                    proposalGrid.appendChild(card);
                 });
             }
         })

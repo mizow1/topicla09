@@ -90,6 +90,152 @@ body {
     color: #842029;
 }
 
+/* 提案オプションのスタイル改善 */
+.proposal-options {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 15px 0;
+    border: 1px solid #dee2e6;
+}
+
+.proposal-grid {
+    display: grid;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.proposal-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 18px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: relative;
+    cursor: pointer;
+}
+
+.proposal-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 16px rgba(0,123,255,0.15);
+    transform: translateY(-2px);
+}
+
+.proposal-card.selected {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    box-shadow: 0 4px 16px rgba(40,167,69,0.2);
+}
+
+.proposal-number {
+    position: absolute;
+    top: -8px;
+    left: 15px;
+    background: #007bff;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.proposal-card.selected .proposal-number {
+    background: #28a745;
+}
+
+.proposal-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #495057;
+    margin-bottom: 12px;
+    padding-top: 8px;
+}
+
+.proposal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.proposal-select-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.proposal-select-btn:hover {
+    background: #0056b3;
+    transform: scale(1.05);
+}
+
+.proposal-card.selected .proposal-select-btn {
+    background: #28a745;
+    color: white;
+}
+
+.proposal-regenerate-section {
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+}
+
+.regenerate-btn {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.regenerate-btn:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.regenerate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.section-header h6 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.section-icon {
+    font-size: 20px;
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 0 15px;
@@ -97,5 +243,13 @@ body {
     
     .card {
         margin-bottom: 1rem;
+    }
+    
+    .proposal-card {
+        padding: 15px;
+    }
+    
+    .proposal-text {
+        font-size: 14px;
     }
 }
