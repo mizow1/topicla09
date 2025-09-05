@@ -220,6 +220,121 @@ switch ($action) {
         }
         break;
 
+    case 'generate-topic-cluster-from-analysis':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['analysisId']) || empty($input['siteUrl'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '分析IDとサイトURLが必要です']);
+                }
+                
+                $analysisId = intval($input['analysisId']);
+                $siteUrl = $input['siteUrl'];
+                $isRegenerate = $input['regenerate'] ?? false;
+                $currentProposals = $input['currentProposals'] ?? [];
+                
+                // 分析結果の取得
+                $analysis = $db->fetchOne("SELECT * FROM analysis_history WHERE id = ?", [$analysisId]);
+                if (!$analysis) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '分析結果が見つかりません']);
+                }
+                
+                $geminiClient = new GeminiClient();
+                $result = $geminiClient->generateTopicClusterFromAnalysis(
+                    $siteUrl, 
+                    $analysis, 
+                    $isRegenerate, 
+                    $currentProposals
+                );
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'proposals' => $result['proposals'],
+                    'extractedKeywords' => $result['extractedKeywords']
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => 'トピッククラスター生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'generate-article-structures':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['articleTitle'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '記事タイトルが必要です']);
+                }
+                
+                $articleTitle = $input['articleTitle'];
+                $topic = $input['topic'] ?? '';
+                $isRegenerate = $input['regenerate'] ?? false;
+                $currentStructures = $input['currentStructures'] ?? [];
+                
+                $geminiClient = new GeminiClient();
+                $structures = $geminiClient->generateArticleStructures($articleTitle, $topic, $isRegenerate, $currentStructures);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'structures' => $structures
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '記事構成生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'generate-article-content':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['headingStructure'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '見出し構造が必要です']);
+                }
+                
+                $articleTitle = $input['articleTitle'] ?? '';
+                $headingStructure = $input['headingStructure'];
+                $topic = $input['topic'] ?? '';
+                
+                $geminiClient = new GeminiClient();
+                $content = $geminiClient->generateArticleContentForCluster($headingStructure, $articleTitle, $topic);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'content' => $content,
+                    'headingStructure' => $headingStructure
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '記事本文作成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+
     case 'history':
         $page = max(1, intval($_GET['page'] ?? 1));
         $limit = 20;

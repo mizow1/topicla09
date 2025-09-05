@@ -563,5 +563,503 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
             return "Web検索の実行に失敗しました。一般的な業界知識を活用してコンテンツを作成します。";
         }
     }
+    
+    public function generateTopicClusterFromAnalysis($siteUrl, $analysis, $isRegenerate = false, $currentProposals = []) {
+        // 分析対象ページからコンテンツを取得
+        try {
+            $pageContent = $this->fetchPageContent($siteUrl);
+        } catch (Exception $e) {
+            throw new Exception("分析対象ページの取得に失敗しました: " . $e->getMessage());
+        }
+        
+        // ページからメインキーワードを抽出
+        $extractedKeywords = $this->extractMainKeywordsFromContent($pageContent, $siteUrl);
+        
+        if (empty($extractedKeywords)) {
+            throw new Exception("ページからキーワードを抽出できませんでした");
+        }
+        
+        // 抽出したキーワードを基にトピッククラスターを生成
+        $mainTopic = $extractedKeywords[0]; // 最も重要なキーワードをメイントピックとする
+        
+        $regenerateNote = '';
+        if ($isRegenerate && !empty($currentProposals)) {
+            $regenerateNote = "\n\n**重要：以下の提案と重複しない、新しい5つの提案を作成してください:**\n" . 
+                             json_encode($currentProposals, JSON_UNESCAPED_UNICODE);
+        }
+        
+        $prompt = "あなたは経験豊富なSEO専門家です。以下の分析対象ページから抽出した情報を基に、トピッククラスターによるSEO戦略を提案してください。
+
+**分析対象URL:** {$siteUrl}
+**抽出されたメインキーワード:** " . implode(', ', $extractedKeywords) . "
+**メイントピック:** {$mainTopic}
+
+**ページ内容（抜粋）:**
+" . mb_substr(strip_tags($pageContent), 0, 3000) . "
+
+**トピッククラスターとは:**
+- 1つのピラー記事（包括的なメイン記事）を中心に
+- 複数の関連するクラスター記事（詳細な個別記事）を作成し
+- 内部リンクで相互に連結することでSEO効果を高める手法
+
+**要求事項:**
+1. 抽出したキーワードを活用した5つの異なるアプローチの提案
+2. 各提案には以下を含める：
+   - 1つのピラー記事タイトル（抽出キーワードを含む包括的で権威性のある内容）
+   - 5-7つのクラスター記事タイトル（具体的でロングテールキーワードを含む）
+
+**ピラー記事の特徴:**
+- メインキーワード「{$mainTopic}」を必ず含む包括的なタイトル
+- 3000-5000文字規模の大型コンテンツ想定
+- 業界全体を俯瞰する権威性のあるタイトル
+
+**クラスター記事の特徴:**
+- ピラー記事のサブトピックを詳細に扱う
+- 抽出されたキーワード群を組み合わせたロングテールキーワードを含む
+- 実用的で検索需要のあるタイトル
+- 1500-2500文字規模のコンテンツ想定{$regenerateNote}
+
+以下のJSONフォーマットで5つの提案を出力してください：
+
+```json
+[
+  {
+    \"pillarTitle\": \"【2024年完全版】{$mainTopic}の全知識｜初心者から上級者まで完全攻略ガイド\",
+    \"clusterTitles\": [
+      \"{$mainTopic}とは？基礎知識を初心者向けにわかりやすく解説\",
+      \"{$mainTopic}のメリット・デメリット｜導入前に知っておくべき全情報\",
+      \"{$mainTopic}の始め方｜初心者でも失敗しない5つのステップ\",
+      \"{$mainTopic}のツール比較｜おすすめ10選を徹底レビュー\",
+      \"{$mainTopic}のよくある失敗例と対策｜成功率を上げる方法\",
+      \"{$mainTopic}の最新トレンド｜2024年に押さえるべき動向\"
+    ]
+  }
+]
+```
+
+※ 上記は例です。実際には抽出されたキーワードに基づいて、より具体的で関連性の高いタイトルを5案作成してください。
+
+必ずJSONのみを返してください。説明文は含めないでください。";
+
+        $response = $this->callGeminiAPI($prompt);
+        
+        // JSONの抽出とパース
+        $jsonStart = strpos($response, '[');
+        $jsonEnd = strrpos($response, ']');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("JSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $proposals = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("提案のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        if (!is_array($proposals)) {
+            throw new Exception("提案が配列ではありません");
+        }
+        
+        // 提案の検証とクリーンアップ
+        $validatedProposals = [];
+        foreach ($proposals as $proposal) {
+            if (isset($proposal['pillarTitle'], $proposal['clusterTitles']) && 
+                is_array($proposal['clusterTitles']) && 
+                count($proposal['clusterTitles']) >= 5) {
+                $validatedProposals[] = $proposal;
+            }
+        }
+        
+        if (empty($validatedProposals)) {
+            throw new Exception("有効な提案が得られませんでした");
+        }
+        
+        return [
+            'proposals' => $validatedProposals,
+            'extractedKeywords' => $extractedKeywords
+        ];
+    }
+    
+    private function extractMainKeywordsFromContent($pageContent, $siteUrl) {
+        // HTMLタグを除去
+        $textContent = strip_tags($pageContent);
+        
+        // titleタグとh1タグを特別に抽出
+        $title = '';
+        $h1 = '';
+        
+        if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $pageContent, $matches)) {
+            $title = trim($matches[1]);
+        }
+        
+        if (preg_match('/<h1[^>]*>([^<]+)<\/h1>/i', $pageContent, $matches)) {
+            $h1 = trim(strip_tags($matches[1]));
+        }
+        
+        // meta descriptionも抽出
+        $metaDescription = '';
+        if (preg_match('/<meta[^>]*name=["\']description["\'][^>]*content=["\']([^"\']+)["\'][^>]*>/i', $pageContent, $matches)) {
+            $metaDescription = trim($matches[1]);
+        }
+        
+        // Gemini APIを使用してキーワードを抽出
+        $prompt = "あなたはSEO専門家です。以下のWebページ情報から、SEO戦略に重要なメインキーワード3-5個を抽出してください。
+
+**URL:** {$siteUrl}
+**Titleタグ:** {$title}
+**H1タグ:** {$h1}
+**Meta Description:** {$metaDescription}
+**ページ本文（抜粋）:** " . mb_substr($textContent, 0, 5000) . "
+
+**抽出条件:**
+1. 検索ボリュームが期待できるキーワード
+2. ページの主要トピックを表すキーワード
+3. トピッククラスター戦略に適用可能なキーワード
+4. ビジネス価値の高いキーワード
+
+**出力形式:**
+重要度順にキーワードのみをカンマ区切りで出力してください。
+
+例: キーワード1, キーワード2, キーワード3
+
+キーワードのみを返してください。説明は不要です。";
+
+        try {
+            $response = $this->callGeminiAPI($prompt);
+            
+            // レスポンスからキーワードを抽出
+            $response = trim($response);
+            
+            // 改行や余分な文字を除去
+            $response = preg_replace('/[\r\n]+/', '', $response);
+            
+            // カンマ区切りでキーワードを分割
+            $keywords = array_map('trim', explode(',', $response));
+            
+            // 空のキーワードを除去
+            $keywords = array_filter($keywords, function($keyword) {
+                return !empty($keyword) && mb_strlen($keyword) >= 2 && mb_strlen($keyword) <= 30;
+            });
+            
+            // 最大5個までに制限
+            $keywords = array_slice($keywords, 0, 5);
+            
+            if (empty($keywords)) {
+                // フォールバック：titleタグから抽出
+                if (!empty($title)) {
+                    $fallbackKeywords = [];
+                    $words = preg_split('/[\s\|｜\-\–\—\[\]【】\(\)（）]+/', $title);
+                    foreach ($words as $word) {
+                        $cleanWord = trim($word);
+                        if (mb_strlen($cleanWord) >= 2 && mb_strlen($cleanWord) <= 20) {
+                            $fallbackKeywords[] = $cleanWord;
+                            if (count($fallbackKeywords) >= 3) break;
+                        }
+                    }
+                    return $fallbackKeywords;
+                }
+                
+                throw new Exception("キーワードの抽出に失敗しました");
+            }
+            
+            return array_values($keywords);
+            
+        } catch (Exception $e) {
+            // フォールバック処理
+            $fallbackKeywords = [];
+            if (!empty($title)) {
+                $words = preg_split('/[\s\|｜\-\–\—\[\]【】\(\)（）]+/', $title);
+                foreach ($words as $word) {
+                    $cleanWord = trim($word);
+                    if (mb_strlen($cleanWord) >= 2 && mb_strlen($cleanWord) <= 20) {
+                        $fallbackKeywords[] = $cleanWord;
+                        if (count($fallbackKeywords) >= 3) break;
+                    }
+                }
+            }
+            
+            if (empty($fallbackKeywords)) {
+                throw new Exception("キーワードの抽出に失敗しました: " . $e->getMessage());
+            }
+            
+            return $fallbackKeywords;
+        }
+    }
+
+    public function generateTopicCluster($topic, $isRegenerate = false, $currentProposals = []) {
+        $regenerateNote = '';
+        if ($isRegenerate && !empty($currentProposals)) {
+            $regenerateNote = "\n\n**重要：以下の提案と重複しない、新しい5つの提案を作成してください:**\n" . 
+                             json_encode($currentProposals, JSON_UNESCAPED_UNICODE);
+        }
+        
+        $prompt = "あなたは経験豊富なSEO専門家です。「{$topic}」というメイントピックについて、トピッククラスターによるSEO戦略を提案してください。
+
+**トピッククラスターとは:**
+- 1つのピラー記事（包括的なメイン記事）を中心に
+- 複数の関連するクラスター記事（詳細な個別記事）を作成し
+- 内部リンクで相互に連結することでSEO効果を高める手法
+
+**要求事項:**
+1. 5つの異なるアプローチの提案
+2. 各提案には以下を含める：
+   - 1つのピラー記事タイトル（包括的で権威性のある内容）
+   - 5-7つのクラスター記事タイトル（具体的でロングテールキーワードを含む）
+
+**ピラー記事の特徴:**
+- メインキーワードを含む包括的なタイトル
+- 3000-5000文字規模の大型コンテンツ想定
+- 業界全体を俯瞰する権威性のあるタイトル
+
+**クラスター記事の特徴:**
+- ピラー記事のサブトピックを詳細に扱う
+- ロングテールキーワードを含む
+- 実用的で検索需要のあるタイトル
+- 1500-2500文字規模のコンテンツ想定{$regenerateNote}
+
+以下のJSONフォーマットで5つの提案を出力してください：
+
+```json
+[
+  {
+    \"pillarTitle\": \"【2024年完全版】{$topic}の全知識｜初心者から上級者まで完全攻略ガイド\",
+    \"clusterTitles\": [
+      \"{$topic}とは？基礎知識を初心者向けにわかりやすく解説\",
+      \"{$topic}のメリット・デメリット｜導入前に知っておくべき全情報\",
+      \"{$topic}の始め方｜初心者でも失敗しない5つのステップ\",
+      \"{$topic}のツール比較｜おすすめ10選を徹底レビュー\",
+      \"{$topic}のよくある失敗例と対策｜成功率を上げる方法\",
+      \"{$topic}の最新トレンド｜2024年に押さえるべき動向\"
+    ]
+  },
+  {
+    \"pillarTitle\": \"プロが教える{$topic}マスターガイド｜効果的な運用と成果の最大化\",
+    \"clusterTitles\": [
+      \"{$topic}の戦略設計｜目標設定から実行プランまで\",
+      \"{$topic}のKPI設定と測定方法｜成果を可視化する指標\",
+      \"{$topic}の予算計画｜コスト効率を最大化するアプローチ\",
+      \"{$topic}のチーム体制｜役割分担と運用フロー\",
+      \"{$topic}の改善サイクル｜PDCAで継続的に成果を向上させる方法\",
+      \"{$topic}の成功事例｜業界別ケーススタディ\"
+    ]
+  },
+  {
+    \"pillarTitle\": \"{$topic}で結果を出す実践メソッド｜即効性のあるテクニック集\",
+    \"clusterTitles\": [
+      \"{$topic}の基本テクニック10選｜すぐに使える実用的手法\",
+      \"{$topic}の応用テクニック｜上級者向け高度な戦術\",
+      \"{$topic}の時短術｜効率を3倍にする自動化のコツ\",
+      \"{$topic}のトラブルシューティング｜よくある問題の解決策\",
+      \"{$topic}の品質向上｜プロレベルの仕上がりにする方法\",
+      \"{$topic}の継続のコツ｜モチベーション維持と習慣化\"
+    ]
+  },
+  {
+    \"pillarTitle\": \"{$topic}業界分析レポート｜市場動向と将来予測\",
+    \"clusterTitles\": [
+      \"{$topic}市場規模と成長予測｜2024年最新データ分析\",
+      \"{$topic}の競合分析｜主要プレイヤーの戦略比較\",
+      \"{$topic}の技術革新｜最新テクノロジーの影響と可能性\",
+      \"{$topic}の法的規制｜コンプライアンスで注意すべきポイント\",
+      \"{$topic}のグローバルトレンド｜海外市場との比較分析\",
+      \"{$topic}の投資動向｜資金調達と企業評価の現状\"
+    ]
+  },
+  {
+    \"pillarTitle\": \"{$topic}スターターキット｜ゼロから始める完全ロードマップ\",
+    \"clusterTitles\": [
+      \"{$topic}の準備段階｜開始前にチェックすべき項目\",
+      \"{$topic}の初期設定｜最適な環境構築の手順\",
+      \"{$topic}の学習計画｜効率的なスキルアップ方法\",
+      \"{$topic}の実践演習｜手を動かして身につける基礎スキル\",
+      \"{$topic}の成果測定｜初心者でもできる効果検証\",
+      \"{$topic}の次のステップ｜中級者への進路ガイド\"
+    ]
+  }
+]
+```
+
+必ずJSONのみを返してください。説明文は含めないでください。";
+
+        $response = $this->callGeminiAPI($prompt);
+        
+        // JSONの抽出とパース
+        $jsonStart = strpos($response, '[');
+        $jsonEnd = strrpos($response, ']');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("JSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $proposals = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("提案のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        if (!is_array($proposals)) {
+            throw new Exception("提案が配列ではありません");
+        }
+        
+        // 提案の検証とクリーンアップ
+        $validatedProposals = [];
+        foreach ($proposals as $proposal) {
+            if (isset($proposal['pillarTitle'], $proposal['clusterTitles']) && 
+                is_array($proposal['clusterTitles']) && 
+                count($proposal['clusterTitles']) >= 5) {
+                $validatedProposals[] = $proposal;
+            }
+        }
+        
+        if (empty($validatedProposals)) {
+            throw new Exception("有効な提案が得られませんでした");
+        }
+        
+        return $validatedProposals;
+    }
+    
+    public function generateArticleStructures($articleTitle, $topic, $isRegenerate = false, $currentStructures = []) {
+        $regenerateNote = '';
+        if ($isRegenerate && !empty($currentStructures)) {
+            $regenerateNote = "\n\n**重要：以下の構成と重複しない、新しい5つの構成案を作成してください:**\n" . 
+                             json_encode(array_column($currentStructures, 'headings'), JSON_UNESCAPED_UNICODE);
+        }
+        
+        $prompt = "あなたは経験豊富なSEOライターです。「{$articleTitle}」というタイトルの記事について、SEO最適化された見出し構造を5パターン提案してください。
+
+**記事タイトル:** {$articleTitle}
+**関連トピック:** {$topic}
+
+**要求事項:**
+1. 5つの異なるアプローチの構成案を作成
+2. 各構成は実際のh1, h2, h3タグ形式で出力
+3. SEO効果と読者体験の両方を考慮
+4. 実用的で具体的な見出し文
+5. 論理的な情報階層構造{$regenerateNote}
+
+**構成タイプの例:**
+- 完全ガイド型：包括的で網羅性重視
+- ステップ型：手順を段階的に説明
+- 比較・選択型：複数の選択肢を比較検討
+- 問題解決型：課題とその解決策を提示
+- 初心者向け型：基礎から応用まで段階的
+
+以下のJSONフォーマットで5つの構成案を出力してください：
+
+```json
+[
+  {
+    \"type\": \"完全ガイド型\",
+    \"headings\": \"<h1>{$articleTitle}</h1>\\n<h2>基礎知識と重要性</h2>\\n<h3>定義と概要</h3>\\n<h3>なぜ重要なのか</h3>\\n<h2>具体的な方法とテクニック</h2>\\n<h3>基本的なアプローチ</h3>\\n<h3>応用テクニック</h3>\\n<h2>実践例とケーススタディ</h2>\\n<h3>成功事例の分析</h3>\\n<h3>失敗例から学ぶ教訓</h3>\\n<h2>よくある質問と解決策</h2>\\n<h2>まとめと次のステップ</h2>\"
+  },
+  {
+    \"type\": \"ステップ型\",
+    \"headings\": \"<h1>{$articleTitle}</h1>\\n<h2>開始前の準備</h2>\\n<h3>必要な知識・スキル</h3>\\n<h3>準備すべきツール・リソース</h3>\\n<h2>ステップ1: 基礎の理解</h2>\\n<h3>重要な概念の習得</h3>\\n<h3>基本操作の練習</h3>\\n<h2>ステップ2: 実践への応用</h2>\\n<h3>実際の作業手順</h3>\\n<h3>注意点とコツ</h3>\\n<h2>ステップ3: 最適化と改善</h2>\\n<h3>品質向上のポイント</h3>\\n<h3>効率化のテクニック</h3>\\n<h2>成果の測定と評価</h2>\\n<h2>次のレベルへの発展</h2>\"
+  },
+  {
+    \"type\": \"問題解決型\",
+    \"headings\": \"<h1>{$articleTitle}</h1>\\n<h2>現状の課題と問題点</h2>\\n<h3>よくある悩みと困りごと</h3>\\n<h3>従来のアプローチの限界</h3>\\n<h2>解決策の全体像</h2>\\n<h3>アプローチの基本方針</h3>\\n<h3>期待できる効果</h3>\\n<h2>具体的な解決方法</h2>\\n<h3>即効性のある対策</h3>\\n<h3>根本的な改善策</h3>\\n<h2>実装時の注意点</h2>\\n<h3>よくある失敗パターン</h3>\\n<h3>回避すべきリスク</h3>\\n<h2>成功のための継続的改善</h2>\"
+  },
+  {
+    \"type\": \"比較・選択型\",
+    \"headings\": \"<h1>{$articleTitle}</h1>\\n<h2>選択肢の全体像</h2>\\n<h3>主要な選択肢の概要</h3>\\n<h3>選択基準の重要ポイント</h3>\\n<h2>選択肢A：詳細分析</h2>\\n<h3>特徴とメリット</h3>\\n<h3>デメリットと注意点</h3>\\n<h2>選択肢B：詳細分析</h2>\\n<h3>特徴とメリット</h3>\\n<h3>デメリットと注意点</h3>\\n<h2>選択肢C：詳細分析</h2>\\n<h3>特徴とメリット</h3>\\n<h3>デメリットと注意点</h3>\\n<h2>シーン別おすすめ選択</h2>\\n<h2>最適な判断基準と決め方</h2>\"
+  },
+  {
+    \"type\": \"初心者向け型\",
+    \"headings\": \"<h1>{$articleTitle}</h1>\\n<h2>初心者が知っておくべき基礎</h2>\\n<h3>専門用語の理解</h3>\\n<h3>基本的な仕組み</h3>\\n<h2>始める前の心構え</h2>\\n<h3>よくある初心者の誤解</h3>\\n<h3>現実的な目標設定</h3>\\n<h2>初心者でもできる簡単な方法</h2>\\n<h3>最初の一歩</h3>\\n<h3>続けるためのコツ</h3>\\n<h2>レベルアップのための学習</h2>\\n<h3>次に身につけるべきスキル</h3>\\n<h3>おすすめの学習リソース</h3>\\n<h2>困った時のサポート情報</h2>\"
+  }
+]
+```
+
+必ずJSONのみを返してください。説明文は含めないでください。";
+
+        $response = $this->callGeminiAPI($prompt);
+        
+        // JSONの抽出とパース
+        $jsonStart = strpos($response, '[');
+        $jsonEnd = strrpos($response, ']');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("JSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $structures = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("構成のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        if (!is_array($structures)) {
+            throw new Exception("構成が配列ではありません");
+        }
+        
+        // 構成の検証とクリーンアップ
+        $validatedStructures = [];
+        foreach ($structures as $structure) {
+            if (isset($structure['type'], $structure['headings'])) {
+                // HTMLタグをプレーンテキストに変換して表示用に整形
+                $headings = $structure['headings'];
+                $headings = str_replace('\\n', "\n", $headings);
+                $headings = html_entity_decode($headings);
+                
+                $validatedStructures[] = [
+                    'type' => $structure['type'],
+                    'headings' => $headings
+                ];
+            }
+        }
+        
+        if (empty($validatedStructures)) {
+            throw new Exception("有効な構成案が得られませんでした");
+        }
+        
+        return $validatedStructures;
+    }
+    
+    public function generateArticleContentForCluster($headingStructure, $articleTitle, $topic) {
+        $prompt = "あなたは経験豊富なコンテンツライターです。以下の見出し構造に基づいて、SEO最適化された高品質な記事本文を作成してください。
+
+**記事タイトル:** {$articleTitle}
+**メイントピック:** {$topic}
+**見出し構造:**
+{$headingStructure}
+
+**重要な要求事項:**
+1. **SEO最適化:** メインキーワードとロングテールキーワードを自然に含める
+2. **実用性:** 読者が実際に行動できる具体的な情報を提供
+3. **権威性:** 専門性を示しつつ、信頼できる内容
+4. **読みやすさ:** 論理的な構成で理解しやすい文章
+5. **ボリューム:** 各見出しに適切なボリューム（200-500文字程度）の本文
+
+**作成指針:**
+- 各見出しレベル（h1, h2, h3）に対応した詳細な本文を作成
+- 具体例、データ、事例を豊富に含める  
+- 読者の疑問に先回りして答える
+- アクションを促す実用的なアドバイス
+- 最新の情報とトレンドを反映
+- 検索意図に完全に対応した内容
+
+**出力形式:**
+Markdown形式で出力してください。見出しは#、##、###を使用し、本文は適切な段落で分けてください。
+
+例：
+# メインタイトル
+ここにh1に対応する導入文を詳細に記述
+
+## サブタイトル1  
+ここにh2に対応する詳細な説明と具体例
+
+### 詳細項目1
+ここにh3に対応する実用的で具体的な内容
+
+このような形式で、全ての見出しに対応する充実した本文をMarkdown形式で作成してください。";
+
+        $response = $this->callGeminiAPI($prompt);
+        return trim($response);
+    }
 }
 ?>
