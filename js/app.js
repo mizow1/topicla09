@@ -162,28 +162,15 @@ const App = {
 document.addEventListener('DOMContentLoaded', function() {
     // アラートエリア作成
     if (!document.querySelector('#alerts')) {
-        const alertsDiv = document.createElement('div');
-        alertsDiv.id = 'alerts';
-        document.querySelector('main').prepend(alertsDiv);
+        const main = document.querySelector('main');
+        if (main) {
+            const alertsDiv = document.createElement('div');
+            alertsDiv.id = 'alerts';
+            main.prepend(alertsDiv);
+        }
     }
     
-    // フォーム送信イベント
-    const analysisForm = document.querySelector('#analysis-form');
-    if (analysisForm) {
-        analysisForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const url = formData.get('url');
-            const siteId = formData.get('site_id');
-            
-            if (!App.isValidUrl(url)) {
-                App.showError('有効なURLを入力してください');
-                return;
-            }
-            
-            App.runAnalysis(url, siteId);
-        });
-    }
+    // 分析フォームは各ページで個別に処理
     
     // サイト追加フォーム
     const siteForm = document.querySelector('#site-form');

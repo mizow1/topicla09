@@ -145,20 +145,27 @@ document.getElementById('analysis-form').addEventListener('submit', function(e) 
     analysisSection.style.display = 'block';
     
     // ローディング表示
-    App.showLoading('#analysis-results');
+    resultsDiv.innerHTML = `
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">分析中...</span>
+            </div>
+            <p class="mt-2">SEO分析を実行中です...</p>
+        </div>
+    `;
     
     // スムーズにスクロール
     analysisSection.scrollIntoView({ behavior: 'smooth' });
     
-    fetch('/analysis/run', {
+    fetch('<?= url("analysis/run") ?>', {
         method: 'POST',
         body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // 結果ページにリダイレクト
-            window.location.href = '/analysis/result/' + data.analysis_id;
+            // 分析結果を直接表示
+            displayAnalysisResults(data);
         } else {
             resultsDiv.innerHTML = `
                 <div class="alert alert-danger" role="alert">
@@ -198,4 +205,290 @@ document.getElementById('site_id').addEventListener('change', function() {
         }
     }
 });
+
+// 分析結果表示関数
+function displayAnalysisResults(data) {
+    const resultsDiv = document.getElementById('analysis-results');
+    const recommendations = data.results || [];
+    
+    if (!recommendations || recommendations.length === 0) {
+        resultsDiv.innerHTML = `
+            <div class="alert alert-info" role="alert">
+                <h5>改善提案がありません</h5>
+                <p>この分析では具体的な改善提案が生成されませんでした。</p>
+            </div>
+            <div class="text-center mt-4">
+                <a href="<?= url('analysis/result/') ?>${data.analysis_id}" class="btn btn-primary">
+                    詳細結果ページへ
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    // 優先度別カウント
+    const priorityCounts = {high: 0, medium: 0, low: 0};
+    let totalEstimatedHours = 0;
+    
+    recommendations.forEach(rec => {
+        priorityCounts[rec.priority || 'medium']++;
+        totalEstimatedHours += parseFloat(rec.estimated_hours || 1.0);
+    });
+
+    const headerHtml = `
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h2>SEO分析結果</h2>
+                <p class="text-muted mb-0">
+                    <strong>分析完了</strong>
+                </p>
+                <small class="text-muted">
+                    分析日時: ${new Date().toLocaleString('ja-JP')} 
+                </small>
+            </div>
+            <div>
+                <a href="<?= url('analysis/result/') ?>${data.analysis_id}" class="btn btn-primary">
+                    詳細結果ページへ
+                </a>
+            </div>
+        </div>
+    `;
+
+    const summaryHtml = `
+        <!-- サマリー統計 -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center border-danger">
+                    <div class="card-body">
+                        <h3 class="text-danger">${priorityCounts.high}</h3>
+                        <p class="card-text">高優先度</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center border-warning">
+                    <div class="card-body">
+                        <h3 class="text-warning">${priorityCounts.medium}</h3>
+                        <p class="card-text">中優先度</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center border-success">
+                    <div class="card-body">
+                        <h3 class="text-success">${priorityCounts.low}</h3>
+                        <p class="card-text">低優先度</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center border-info">
+                    <div class="card-body">
+                        <h3 class="text-info">${totalEstimatedHours.toFixed(1)}</h3>
+                        <p class="card-text">予想作業時間</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    let recommendationsHtml = '';
+    recommendations.forEach((rec, index) => {
+        // proposalsの処理
+        let proposals = [];
+        if (rec.proposals && Array.isArray(rec.proposals)) {
+            proposals = rec.proposals;
+        } else if (rec.conclusion) {
+            // conclusionから数字付きリストを抽出
+            const matches = rec.conclusion.match(/\d+\.\s*([^\n]+)/g);
+            if (matches) {
+                proposals = matches.map(match => match.replace(/^\d+\.\s*/, ''));
+            }
+        }
+
+        const priorityClass = rec.priority === 'high' ? 'danger' : (rec.priority === 'medium' ? 'warning' : 'success');
+        const priorityText = rec.priority === 'high' ? '高' : (rec.priority === 'medium' ? '中' : '低');
+        const difficultyText = rec.difficulty === 'easy' ? '易' : (rec.difficulty === 'medium' ? '中' : '難');
+
+        recommendationsHtml += `
+            <div class="recommendation-item mb-4" data-priority="${rec.priority}" data-category="${rec.category}">
+                <div class="card border-${priorityClass}">
+                    <div class="card-header d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1">${escapeHtml(rec.title)}</h5>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-${priorityClass}">
+                                    優先度: ${priorityText}
+                                </span>
+                                <span class="badge bg-secondary">
+                                    ${rec.category}
+                                </span>
+                                <span class="badge bg-info">
+                                    難易度: ${difficultyText}
+                                </span>
+                                <span class="badge bg-dark">
+                                    予想時間: ${rec.estimated_hours}時間
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                ${proposals.length > 0 ? `
+                                <div class="section-header">
+                                    <span class="section-icon">💡</span>
+                                    <h6 class="text-success">改善提案オプション（${proposals.length}案）</h6>
+                                </div>
+                                <div class="proposal-options">
+                                    <div class="proposal-grid">
+                                        ${proposals.map((proposal, pIndex) => `
+                                        <div class="proposal-card">
+                                            <div class="proposal-number">${pIndex + 1}</div>
+                                            <div class="proposal-text">
+                                                ${escapeHtml(proposal).replace(/\n/g, '<br>')}
+                                            </div>
+                                            <div class="proposal-actions">
+                                                <button class="proposal-select-btn copy-proposal" 
+                                                        data-proposal="${escapeHtml(proposal)}"
+                                                        onclick="copyToClipboard('${escapeHtml(proposal)}')">
+                                                    📋 コピー
+                                                </button>
+                                            </div>
+                                        </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-info">💡 詳細説明</h6>
+                                <div class="mb-3">
+                                    ${escapeHtml(rec.explanation || '').replace(/\n/g, '<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    resultsDiv.innerHTML = headerHtml + summaryHtml + recommendationsHtml;
+}
+
+// HTMLエスケープ関数
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// クリップボードコピー関数（簡易版）
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('✅ クリップボードにコピーしました');
+        }).catch(err => {
+            console.error('コピーに失敗しました:', err);
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+        alert('✅ クリップボードにコピーしました');
+    } catch (err) {
+        console.error('コピーに失敗しました:', err);
+        alert('コピーに失敗しました。手動でコピーしてください。');
+    }
+    
+    document.body.removeChild(textArea);
+}
 </script>
+
+<style>
+.proposal-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.proposal-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    background: #f8f9fa;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.proposal-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.15);
+}
+
+.proposal-number {
+    position: absolute;
+    top: -10px;
+    left: 15px;
+    background: #007bff;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.proposal-text {
+    margin: 10px 0 15px 0;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.proposal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.proposal-select-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.proposal-select-btn:hover {
+    background: #218838;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.section-icon {
+    margin-right: 8px;
+    font-size: 18px;
+}
+</style>

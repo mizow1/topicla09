@@ -349,6 +349,153 @@ switch ($action) {
             }
         }
         break;
+        
+    case 'generate-internal-link-optimization':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['analysisId']) || empty($input['siteUrl'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '分析IDとサイトURLが必要です']);
+                }
+                
+                $analysisId = intval($input['analysisId']);
+                $siteUrl = $input['siteUrl'];
+                $isRegenerate = $input['regenerate'] ?? false;
+                $currentProposals = $input['currentProposals'] ?? [];
+                
+                // 分析結果の取得
+                $analysis = $db->fetchOne("SELECT * FROM analysis_history WHERE id = ?", [$analysisId]);
+                if (!$analysis) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => '分析結果が見つかりません']);
+                }
+                
+                $geminiClient = new GeminiClient();
+                $result = $geminiClient->generateInternalLinkOptimization(
+                    $siteUrl, 
+                    $analysis,
+                    $isRegenerate, 
+                    $currentProposals
+                );
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'existingPages' => $result['existingPages'],
+                    'newPageProposals' => $result['newPageProposals']
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '内部リンク最適化生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'regenerate-article-structure':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['articleTitle']) || empty($input['currentStructure'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
+                }
+                
+                $articleTitle = $input['articleTitle'];
+                $currentStructure = $input['currentStructure'];
+                $topic = $input['topic'] ?? '';
+                
+                $geminiClient = new GeminiClient();
+                $newStructure = $geminiClient->regenerateArticleStructure($articleTitle, $topic, $currentStructure);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'structure' => $newStructure
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '記事構成再生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'regenerate-cluster-article':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || !isset($input['proposalIndex']) || !isset($input['clusterIndex'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
+                }
+                
+                $proposalIndex = intval($input['proposalIndex']);
+                $clusterIndex = intval($input['clusterIndex']);
+                $currentTitle = $input['currentTitle'] ?? '';
+                $topic = $input['topic'] ?? '';
+                
+                $geminiClient = new GeminiClient();
+                $newTitle = $geminiClient->regenerateClusterArticle($currentTitle, $topic);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'newTitle' => $newTitle
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => 'クラスター記事再生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'regenerate-single-topic-cluster':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || !isset($input['proposalIndex']) || empty($input['currentProposal'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
+                }
+                
+                $proposalIndex = intval($input['proposalIndex']);
+                $currentProposal = $input['currentProposal'];
+                $topic = $input['topic'] ?? '';
+                
+                $geminiClient = new GeminiClient();
+                $newProposal = $geminiClient->regenerateTopicCluster($currentProposal, $topic);
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'newProposal' => $newProposal
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => 'トピッククラスター再生成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
 
     case 'history':
         $page = max(1, intval($_GET['page'] ?? 1));

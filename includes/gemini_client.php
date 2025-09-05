@@ -1061,5 +1061,147 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
         $response = $this->callGeminiAPI($prompt);
         return trim($response);
     }
+    
+    public function generateInternalLinkOptimization($siteUrl, $analysis, $isRegenerate = false, $currentProposals = []) {
+        $regeneratePrompt = '';
+        if ($isRegenerate && !empty($currentProposals)) {
+            $regeneratePrompt = "\n\n既存の提案と重複しない新しい提案を生成してください。\n既存提案: " . json_encode($currentProposals, JSON_UNESCAPED_UNICODE);
+        }
+        
+        $prompt = "あなたは内部リンク最適化の専門家です。以下の分析結果を基に、内部リンク最適化を提案してください。
+
+分析対象URL: {$siteUrl}
+分析結果: " . json_encode($analysis, JSON_UNESCAPED_UNICODE) . $regeneratePrompt . "
+
+以下の2つのカテゴリに分けて提案してください：
+
+## 1. 既存ページとの内部リンク
+サイト内の既存ページをクロールして、親和性の高いページとの内部リンクを提案
+
+## 2. 新規作成すべきページ
+現在存在しないが、作成することでSEO効果を高められるページを提案
+
+結果をJSONで出力してください：
+```json
+{
+  \"existingPages\": [
+    {
+      \"title\": \"既存ページタイトル\",
+      \"url\": \"https://example.com/page\",
+      \"reason\": \"リンクする理由\",
+      \"linkText\": \"推奨アンカーテキスト\"
+    }
+  ],
+  \"newPageProposals\": [
+    {
+      \"title\": \"新規ページタイトル\",
+      \"description\": \"ページ概要\",
+      \"category\": \"カテゴリ\",
+      \"keywords\": [\"キーワード1\", \"キーワード2\"]
+    }
+  ]
+}
+```";
+        
+        $response = $this->callGeminiAPI($prompt);
+        return $this->parseInternalLinkResponse($response);
+    }
+    
+    public function regenerateClusterArticle($currentTitle, $topic) {
+        $prompt = "あなたはコンテンツマーケティング専門家です。
+
+現在のクラスター記事タイトル: {$currentTitle}
+トピック: {$topic}
+
+現在のタイトルとは異なる、同じトピックに関連する新しいクラスター記事タイトルを1つ生成してください。
+
+要件：
+- SEOに効果的なタイトル
+- 検索意図を満たす内容
+- 既存タイトルとは異なる視点
+
+新しいタイトルのみを出力してください：";
+        
+        $response = $this->callGeminiAPI($prompt);
+        return trim($response);
+    }
+    
+    public function regenerateTopicCluster($currentProposal, $topic) {
+        $prompt = "あなたはトピッククラスター専門家です。
+
+現在の提案: " . json_encode($currentProposal, JSON_UNESCAPED_UNICODE) . "
+トピック: {$topic}
+
+現在の提案とは異なる新しいトピッククラスター提案を生成してください。
+
+結果をJSONで出力してください：
+```json
+{
+  \"pillarTitle\": \"ピラー記事タイトル\",
+  \"clusterTitles\": [
+    \"クラスター記事1\",
+    \"クラスター記事2\",
+    \"クラスター記事3\",
+    \"クラスター記事4\",
+    \"クラスター記事5\"
+  ]
+}
+```";
+        
+        $response = $this->callGeminiAPI($prompt);
+        return $this->parseTopicClusterResponse($response);
+    }
+    
+    public function regenerateArticleStructure($articleTitle, $topic, $currentStructure) {
+        $prompt = "あなたは記事構成の専門家です。
+
+記事タイトル: {$articleTitle}
+トピック: {$topic}
+現在の構成: {$currentStructure}
+
+現在の構成とは異なる新しい記事構成を生成してください。見出し構造（h1, h2, h3等）を明確に示してください。";
+        
+        $response = $this->callGeminiAPI($prompt);
+        return trim($response);
+    }
+    
+    private function parseInternalLinkResponse($response) {
+        $jsonStart = strpos($response, '{');
+        $jsonEnd = strrpos($response, '}');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("内部リンク提案のJSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $result = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("内部リンク提案のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        return [
+            'existingPages' => $result['existingPages'] ?? [],
+            'newPageProposals' => $result['newPageProposals'] ?? []
+        ];
+    }
+    
+    private function parseTopicClusterResponse($response) {
+        $jsonStart = strpos($response, '{');
+        $jsonEnd = strrpos($response, '}');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("トピッククラスター提案のJSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $result = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("トピッククラスター提案のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        return $result;
+    }
 }
 ?>
