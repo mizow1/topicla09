@@ -24,16 +24,20 @@ class WordPressClient {
         }
         
         try {
-            // MarkdownをHTMLに変換
+            // MarkdownをHTMLに変換（構造は追加しない）
             $htmlContent = $this->markdownToHtml($content);
             
-            // 構造がある場合は先頭に追加
+            // 構造からh1タグの内容をタイトルに適用
+            $finalTitle = $title;
             if (!empty($structure)) {
-                $htmlContent = "<div class=\"article-structure\"><h3>記事構成</h3><pre>" . htmlspecialchars($structure) . "</pre></div>\n\n" . $htmlContent;
+                $h1Title = $this->extractH1FromStructure($structure);
+                if ($h1Title) {
+                    $finalTitle = $h1Title;
+                }
             }
             
             $postData = [
-                'title' => $title,
+                'title' => $finalTitle,
                 'content' => $htmlContent,
                 'status' => 'draft', // 下書きとして作成
                 'format' => 'standard'
