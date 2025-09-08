@@ -388,15 +388,10 @@
                     <pre id="contentHeadingStructure" class="bg-light p-2 border rounded" style="white-space: pre-wrap;"></pre>
                 </div>
                 <div class="mb-3">
-                    <h6>✍️ 本文内容（HTML表示）:</h6>
-                    <div id="contentHtmlDisplay" class="border rounded p-3" style="max-height: 400px; overflow-y: auto;"></div>
-                </div>
-                <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0">📝 本文編集（Markdown形式）:</h6>
                         <div>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="previewBtn">👁️ プレビュー</button>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="editModeBtn" style="display: none;">✏️ 編集</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="previewToggleBtn">👁️ プレビュー</button>
                         </div>
                     </div>
                     <textarea id="contentMarkdownEditor" class="form-control" style="height: 300px; font-family: 'Consolas', monospace;" placeholder="記事本文をMarkdown形式で編集してください..."></textarea>
@@ -712,14 +707,20 @@ function markdownToHtml(markdown) {
 
 // 本文表示モーダル
 function showContentModal(content, headingStructure) {
-    // MarkdownをHTMLに変換
-    const htmlContent = markdownToHtml(content);
-    
     // 既存のモーダルの要素に値を設定
     document.getElementById('contentModalLabel').textContent = '📝 生成された記事本文';
     document.getElementById('contentHeadingStructure').textContent = headingStructure;
-    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
     document.getElementById('contentMarkdownEditor').value = content;
+    
+    // プレビュー状態をリセット
+    const editor = document.getElementById('contentMarkdownEditor');
+    const preview = document.getElementById('contentMarkdownPreview');
+    const toggleBtn = document.getElementById('previewToggleBtn');
+    
+    editor.style.display = 'block';
+    preview.style.display = 'none';
+    toggleBtn.textContent = '👁️ プレビュー';
+    isHtmlTagView = false;
     
     // 現在の記事タイトルと構造を保存
     window.currentArticleTitle = '生成された記事';
@@ -1002,8 +1003,19 @@ function hideStructureLoading() {
 async function generateArticleContentFromStructure(articleTitle, headingStructure) {
     document.getElementById('contentModalLabel').textContent = '✍️ 記事本文';
     document.getElementById('contentHeadingStructure').textContent = headingStructure;
-    document.getElementById('contentHtmlDisplay').innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">本文生成中...</span></div><p class="mt-2">記事本文を生成中です...</p></div>';
-    document.getElementById('contentMarkdownEditor').value = '';
+    
+    // エディターに生成中メッセージを表示
+    document.getElementById('contentMarkdownEditor').value = '記事本文を生成中です...\n\n生成が完了するまでしばらくお待ちください。';
+    
+    // プレビュー状態をリセット
+    const editor = document.getElementById('contentMarkdownEditor');
+    const preview = document.getElementById('contentMarkdownPreview');
+    const toggleBtn = document.getElementById('previewToggleBtn');
+    
+    editor.style.display = 'block';
+    preview.style.display = 'none';
+    toggleBtn.textContent = '👁️ プレビュー';
+    isHtmlTagView = false;
     
     // モーダル表示
     const modal = new bootstrap.Modal(document.getElementById('contentModal'));
@@ -1025,19 +1037,17 @@ async function generateArticleContentFromStructure(articleTitle, headingStructur
         const data = await response.json();
         
         if (data.success) {
-            const htmlContent = markdownToHtml(data.content);
-            document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
             document.getElementById('contentMarkdownEditor').value = data.content;
             
             // 現在の記事タイトルと構造を保存
             window.currentArticleTitle = articleTitle;
             window.currentHeadingStructure = headingStructure;
         } else {
-            document.getElementById('contentHtmlDisplay').innerHTML = '<div class="alert alert-danger">本文生成に失敗しました: ' + (data.error || '不明なエラー') + '</div>';
+            document.getElementById('contentMarkdownEditor').value = '本文生成に失敗しました: ' + (data.error || '不明なエラー');
         }
     } catch (error) {
         console.error('本文生成エラー:', error);
-        document.getElementById('contentHtmlDisplay').innerHTML = '<div class="alert alert-danger">本文生成中にエラーが発生しました</div>';
+        document.getElementById('contentMarkdownEditor').value = '本文生成中にエラーが発生しました';
     }
 }
 
@@ -1062,46 +1072,52 @@ document.getElementById('copyAllContentBtn').addEventListener('click', function(
     }
 });
 
-// プレビュー・編集モード切り替え機能
-document.getElementById('previewBtn').addEventListener('click', function() {
+// プレビュー・編集モード切り替え機能（トグル）
+let isHtmlTagView = false; // HTMLタグ表示状態を管理
+
+document.getElementById('previewToggleBtn').addEventListener('click', function() {
     const editor = document.getElementById('contentMarkdownEditor');
     const preview = document.getElementById('contentMarkdownPreview');
-    const previewBtn = document.getElementById('previewBtn');
-    const editBtn = document.getElementById('editModeBtn');
+    const toggleBtn = document.getElementById('previewToggleBtn');
     
-    // エディターの内容をHTMLに変換してプレビューに表示
-    const markdownContent = editor.value;
-    const htmlContent = markdownToHtml(markdownContent);
-    preview.innerHTML = htmlContent;
-    
-    // 表示切り替え
-    editor.style.display = 'none';
-    preview.style.display = 'block';
-    previewBtn.style.display = 'none';
-    editBtn.style.display = 'inline-block';
-    
-    // HTML表示も同時更新
-    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
-});
-
-document.getElementById('editModeBtn').addEventListener('click', function() {
-    const editor = document.getElementById('contentMarkdownEditor');
-    const preview = document.getElementById('contentMarkdownPreview');
-    const previewBtn = document.getElementById('previewBtn');
-    const editBtn = document.getElementById('editModeBtn');
-    
-    // 表示切り替え
-    editor.style.display = 'block';
-    preview.style.display = 'none';
-    previewBtn.style.display = 'inline-block';
-    editBtn.style.display = 'none';
-});
-
-// リアルタイムプレビュー（編集中にHTML表示も更新）
-document.getElementById('contentMarkdownEditor').addEventListener('input', function() {
-    const markdownContent = this.value;
-    const htmlContent = markdownToHtml(markdownContent);
-    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
+    if (editor.style.display !== 'none') {
+        // エディターを隠してプレビューを表示
+        const markdownContent = editor.value;
+        const htmlContent = markdownToHtml(markdownContent);
+        
+        if (isHtmlTagView) {
+            // HTMLタグを表示（エスケープされた状態）
+            preview.innerHTML = '<pre style="white-space: pre-wrap; font-family: monospace;">' + 
+                               htmlContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + 
+                               '</pre>';
+            toggleBtn.textContent = '🖼️ HTMLプレビュー';
+        } else {
+            // HTMLプレビューを表示
+            preview.innerHTML = htmlContent;
+            toggleBtn.textContent = '⚡ HTMLタグ表示';
+        }
+        
+        editor.style.display = 'none';
+        preview.style.display = 'block';
+    } else {
+        // プレビュー表示中の場合
+        if (!isHtmlTagView) {
+            // HTMLプレビュー -> HTMLタグ表示
+            const markdownContent = editor.value;
+            const htmlContent = markdownToHtml(markdownContent);
+            preview.innerHTML = '<pre style="white-space: pre-wrap; font-family: monospace;">' + 
+                               htmlContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + 
+                               '</pre>';
+            toggleBtn.textContent = '✏️ 編集モード';
+            isHtmlTagView = true;
+        } else {
+            // HTMLタグ表示 -> 編集モードに戻る
+            editor.style.display = 'block';
+            preview.style.display = 'none';
+            toggleBtn.textContent = '👁️ プレビュー';
+            isHtmlTagView = false;
+        }
+    }
 });
 
 // 記事保存機能

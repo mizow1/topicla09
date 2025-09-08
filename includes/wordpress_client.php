@@ -84,16 +84,20 @@ class WordPressClient {
                 ];
             }
             
-            // MarkdownをHTMLに変換
+            // MarkdownをHTMLに変換（構造は追加しない）
             $htmlContent = $this->markdownToHtml($content);
             
-            // 構造がある場合は先頭に追加
+            // 構造からh1タグの内容をタイトルに適用
+            $finalTitle = $title;
             if (!empty($structure)) {
-                $htmlContent = "<div class=\"article-structure\"><h3>記事構成</h3><pre>" . htmlspecialchars($structure) . "</pre></div>\n\n" . $htmlContent;
+                $h1Title = $this->extractH1FromStructure($structure);
+                if ($h1Title) {
+                    $finalTitle = $h1Title;
+                }
             }
             
             $postData = [
-                'title' => $title,
+                'title' => $finalTitle,
                 'content' => $htmlContent
             ];
             
@@ -241,6 +245,28 @@ class WordPressClient {
         }
         
         return implode("\n\n", $htmlParagraphs);
+    }
+    
+    /**
+     * 構造からh1タグの内容を抽出
+     */
+    private function extractH1FromStructure($structure) {
+        // <h1>タイトル</h1> 形式から抽出
+        if (preg_match('/<h1[^>]*>(.*?)<\/h1>/i', $structure, $matches)) {
+            return trim(strip_tags($matches[1]));
+        }
+        
+        // h1: タイトル 形式から抽出
+        if (preg_match('/^h1:\s*(.+?)(?:\n|$)/m', $structure, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        // # タイトル 形式から抽出
+        if (preg_match('/^#\s+(.+?)(?:\n|$)/m', $structure, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        return null;
     }
 }
 ?>
