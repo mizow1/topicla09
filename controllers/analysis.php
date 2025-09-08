@@ -387,7 +387,8 @@ switch ($action) {
                 jsonResponse([
                     'success' => true,
                     'existingPages' => $result['existingPages'],
-                    'newPageProposals' => $result['newPageProposals']
+                    'newPageProposals' => $result['newPageProposals'],
+                    'linkInsertionDetails' => $result['linkInsertionDetails']
                 ]);
                 
             } catch (Exception $e) {

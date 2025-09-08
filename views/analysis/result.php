@@ -1307,9 +1307,10 @@ async function generateInternalLinkOptimization(isRegenerate = false) {
         if (data.success) {
             currentInternalLinkProposals = {
                 existingPages: data.existingPages,
-                newPageProposals: data.newPageProposals
+                newPageProposals: data.newPageProposals,
+                linkInsertionDetails: data.linkInsertionDetails
             };
-            displayInternalLinkProposals(data.existingPages, data.newPageProposals);
+            displayInternalLinkProposals(data.existingPages, data.newPageProposals, data.linkInsertionDetails);
         } else {
             alert('生成に失敗しました: ' + (data.error || '不明なエラー'));
         }
@@ -1334,7 +1335,9 @@ function hideLinkLoading() {
 }
 
 // 内部リンク提案表示
-function displayInternalLinkProposals(existingPages, newPageProposals) {
+function displayInternalLinkProposals(existingPages, newPageProposals, linkInsertionDetails = []) {
+    console.log('displayInternalLinkProposals called with:', {existingPages, newPageProposals, linkInsertionDetails});
+    
     // 既存ページリンク表示
     const existingPagesContainer = document.getElementById('existingPagesLinks');
     existingPagesContainer.innerHTML = '';
@@ -1342,17 +1345,44 @@ function displayInternalLinkProposals(existingPages, newPageProposals) {
     if (existingPages && existingPages.length > 0) {
         existingPages.forEach((page, index) => {
             const pageElement = document.createElement('div');
-            pageElement.className = 'border-bottom pb-2 mb-2';
+            pageElement.className = 'card mb-3 border-primary';
+            
+            // 挿入箇所の詳細があるかチェック
+            const hasInsertDetails = page.insertLocation || page.contextBefore || page.contextAfter;
+            
             pageElement.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1">${page.title}</h6>
-                        <small class="text-muted">${page.url}</small>
-                        <p class="text-sm mt-1">${page.reason}</p>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 text-primary">${page.title}</h6>
+                            <small class="text-muted">${page.url || ''}</small>
+                            <p class="text-sm mt-2 text-secondary">${page.reason}</p>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('${page.linkText}')">
+                                📋 アンカーテキスト
+                            </button>
+                            ${hasInsertDetails ? `
+                            <button class="btn btn-outline-success btn-sm" onclick="copyLinkWithContext('${page.contextBefore || ''}', '${page.linkText}', '${page.contextAfter || ''}')">
+                                📝 文脈込みコピー
+                            </button>
+                            ` : ''}
+                        </div>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('${page.linkText}')">
-                        📋 コピー
-                    </button>
+                    ${hasInsertDetails ? `
+                    <div class="bg-light p-2 rounded mt-2">
+                        <small class="fw-bold text-success">📍 推奨挿入位置:</small>
+                        <div class="text-sm mt-1">${page.insertLocation || '詳細な挿入位置の提案が利用できます'}</div>
+                        ${page.contextBefore ? `
+                        <div class="mt-2">
+                            <small class="fw-bold">💬 文脈例:</small>
+                            <div class="text-sm mt-1">
+                                "${page.contextBefore} <strong class="text-primary">${page.linkText}</strong> ${page.contextAfter}"
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
                 </div>
             `;
             existingPagesContainer.appendChild(pageElement);
@@ -1368,26 +1398,39 @@ function displayInternalLinkProposals(existingPages, newPageProposals) {
     if (newPageProposals && newPageProposals.length > 0) {
         newPageProposals.forEach((page, index) => {
             const pageElement = document.createElement('div');
-            pageElement.className = 'border-bottom pb-3 mb-3';
+            pageElement.className = 'card mb-3 border-info';
             pageElement.innerHTML = `
-                <div class="mb-2">
-                    <h6 class="mb-1">${page.title}</h6>
-                    <p class="text-sm text-muted mb-2">${page.description}</p>
-                    <small class="badge bg-info">${page.category}</small>
-                </div>
-                <div class="text-center">
-                    <button class="btn btn-success btn-sm me-2" onclick="generateNewPageStructure('${page.title.replace(/'/g, "\\'")}', '${page.description.replace(/'/g, "\\'")}')">
-                        📝 記事構成を作成
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('${page.title}')">
-                        📋 タイトルコピー
-                    </button>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <h6 class="mb-1 text-info">${page.title}</h6>
+                        <p class="text-sm text-muted mb-2">${page.description}</p>
+                        <small class="badge bg-info">${page.category}</small>
+                        ${page.suggestedLinkLocation ? `
+                        <div class="mt-2 p-2 bg-info bg-opacity-10 rounded">
+                            <small class="fw-bold text-info">📍 推奨リンク箇所:</small>
+                            <div class="text-sm mt-1">${page.suggestedLinkLocation}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="text-center">
+                        <button class="btn btn-success btn-sm me-2" onclick="generateNewPageStructure('${page.title.replace(/'/g, "\\'")}', '${page.description.replace(/'/g, "\\'")}')">
+                            📝 記事構成を作成
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('${page.title}')">
+                            📋 タイトルコピー
+                        </button>
+                    </div>
                 </div>
             `;
             newPagesContainer.appendChild(pageElement);
         });
     } else {
         newPagesContainer.innerHTML = '<p class="text-muted">新規ページの提案が見つかりませんでした。</p>';
+    }
+    
+    // 具体的なリンク挿入詳細の表示
+    if (linkInsertionDetails && linkInsertionDetails.length > 0) {
+        displayLinkInsertionDetails(linkInsertionDetails);
     }
 }
 
@@ -1586,6 +1629,90 @@ async function regenerateArticleStructure(articleTitle, currentStructure, struct
     } catch (error) {
         console.error('再生成エラー:', error);
         alert('再生成中にエラーが発生しました');
+    }
+}
+
+// 文脈込みリンクテキストのコピー機能
+function copyLinkWithContext(contextBefore, linkText, contextAfter) {
+    const fullText = `${contextBefore} ${linkText} ${contextAfter}`.replace(/\s+/g, ' ').trim();
+    copyToClipboard(fullText);
+}
+
+// 具体的なリンク挿入詳細の表示
+function displayLinkInsertionDetails(linkInsertionDetails) {
+    // 詳細なリンク挿入提案セクションがあるかチェック
+    let detailsContainer = document.getElementById('linkInsertionDetailsContainer');
+    
+    if (!detailsContainer) {
+        // コンテナがない場合は作成
+        const linkResultsSection = document.getElementById('linkResultsSection');
+        const detailsSection = document.createElement('div');
+        detailsSection.className = 'mt-4';
+        detailsSection.innerHTML = `
+            <h5 class="text-warning mb-3">🎯 具体的なリンク挿入提案</h5>
+            <div id="linkInsertionDetailsContainer"></div>
+        `;
+        linkResultsSection.appendChild(detailsSection);
+        detailsContainer = document.getElementById('linkInsertionDetailsContainer');
+    }
+    
+    detailsContainer.innerHTML = '';
+    
+    if (linkInsertionDetails && linkInsertionDetails.length > 0) {
+        linkInsertionDetails.forEach((detail, index) => {
+            const detailElement = document.createElement('div');
+            detailElement.className = 'card mb-3 border-warning';
+            
+            const linkTypeIcon = detail.linkType === 'existing' ? '🔗' : '✨';
+            const linkTypeClass = detail.linkType === 'existing' ? 'success' : 'info';
+            
+            detailElement.innerHTML = `
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1 text-warning">📍 ${detail.sectionTitle || 'セクション' + (index + 1)}</h6>
+                            <small class="badge bg-${linkTypeClass}">${linkTypeIcon} ${detail.linkType === 'existing' ? '既存ページ' : '新規ページ'}</small>
+                        </div>
+                        <button class="btn btn-outline-warning btn-sm" onclick="copyInsertionSuggestion('${detail.suggestedText?.replace(/'/g, "\\'")}')">
+                            📋 提案文をコピー
+                        </button>
+                    </div>
+                    
+                    <div class="bg-light p-3 rounded mb-2">
+                        <small class="fw-bold text-secondary">📝 挿入対象箇所:</small>
+                        <div class="text-sm mt-1 fst-italic">"${detail.insertAfter}"</div>
+                    </div>
+                    
+                    <div class="bg-warning bg-opacity-10 p-3 rounded mb-2">
+                        <small class="fw-bold text-warning">💡 提案文:</small>
+                        <div class="text-sm mt-1">${detail.suggestedText}</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="fw-bold text-primary">🎯 リンク先:</small>
+                            <div class="text-sm">${detail.targetPage}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="fw-bold text-success">📈 SEO効果:</small>
+                            <div class="text-sm">${detail.seoReason}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            detailsContainer.appendChild(detailElement);
+        });
+    } else {
+        detailsContainer.innerHTML = '<p class="text-muted">具体的なリンク挿入提案はありません。</p>';
+    }
+}
+
+// 挿入提案文のコピー機能
+function copyInsertionSuggestion(suggestionText) {
+    if (suggestionText) {
+        copyToClipboard(suggestionText);
+    } else {
+        alert('コピーする提案文がありません');
     }
 }
 

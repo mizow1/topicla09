@@ -1068,18 +1068,22 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
             $regeneratePrompt = "\n\n既存の提案と重複しない新しい提案を生成してください。\n既存提案: " . json_encode($currentProposals, JSON_UNESCAPED_UNICODE);
         }
         
-        $prompt = "あなたは内部リンク最適化の専門家です。以下の分析結果を基に、内部リンク最適化を提案してください。
+        $prompt = "あなたは内部リンク最適化の専門家です。以下の分析結果を基に、現在のページの具体的なコンテンツを考慮した詳細な内部リンク最適化を提案してください。
 
 分析対象URL: {$siteUrl}
 分析結果: " . json_encode($analysis, JSON_UNESCAPED_UNICODE) . $regeneratePrompt . "
 
-以下の2つのカテゴリに分けて提案してください：
+以下の3つのカテゴリに分けて提案してください：
 
 ## 1. 既存ページとの内部リンク
 サイト内の既存ページをクロールして、親和性の高いページとの内部リンクを提案
+現在のページのどの部分（見出しや段落の後）にリンクを挿入すべきかも含めてください
 
 ## 2. 新規作成すべきページ
 現在存在しないが、作成することでSEO効果を高められるページを提案
+
+## 3. 具体的なリンク挿入箇所の提案
+現在のページコンテンツの具体的な箇所にどのようにリンクを追加すべきかを詳細に提案
 
 結果をJSONで出力してください：
 ```json
@@ -1089,7 +1093,10 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
       \"title\": \"既存ページタイトル\",
       \"url\": \"https://example.com/page\",
       \"reason\": \"リンクする理由\",
-      \"linkText\": \"推奨アンカーテキスト\"
+      \"linkText\": \"推奨アンカーテキスト\",
+      \"insertLocation\": \"挿入推奨箇所（例：'h2見出し「〇〇について」の直後の段落'）\",
+      \"contextBefore\": \"リンク前の文脈（例：'このような課題を解決するために'）\",
+      \"contextAfter\": \"リンク後の文脈（例：'の詳細な手順を確認できます'）\"
     }
   ],
   \"newPageProposals\": [
@@ -1097,14 +1104,25 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
       \"title\": \"新規ページタイトル\",
       \"description\": \"ページ概要\",
       \"category\": \"カテゴリ\",
-      \"keywords\": [\"キーワード1\", \"キーワード2\"]
+      \"keywords\": [\"キーワード1\", \"キーワード2\"],
+      \"suggestedLinkLocation\": \"現在のページのどの部分にリンクを追加すべきか\"
+    }
+  ],
+  \"linkInsertionDetails\": [
+    {
+      \"sectionTitle\": \"対象セクション名\",
+      \"insertAfter\": \"この文の後に挿入\",
+      \"suggestedText\": \"挿入すべき文章とリンクテキストの例\",
+      \"linkType\": \"existing\" または \"new\",
+      \"targetPage\": \"リンク先ページ\",
+      \"seoReason\": \"SEO観点からの効果説明\"
     }
   ]
 }
 ```";
         
         $response = $this->callGeminiAPI($prompt);
-        return $this->parseInternalLinkResponse($response);
+        return $this->parseEnhancedInternalLinkResponse($response);
     }
     
     public function regenerateClusterArticle($currentTitle, $topic) {
@@ -1183,6 +1201,28 @@ Markdown形式で出力してください。見出しは#、##、###を使用し
         return [
             'existingPages' => $result['existingPages'] ?? [],
             'newPageProposals' => $result['newPageProposals'] ?? []
+        ];
+    }
+    
+    private function parseEnhancedInternalLinkResponse($response) {
+        $jsonStart = strpos($response, '{');
+        $jsonEnd = strrpos($response, '}');
+        
+        if ($jsonStart === false || $jsonEnd === false) {
+            throw new Exception("内部リンク提案のJSONが見つかりませんでした");
+        }
+        
+        $jsonString = substr($response, $jsonStart, $jsonEnd - $jsonStart + 1);
+        $result = json_decode($jsonString, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception("内部リンク提案のJSONパースに失敗しました: " . json_last_error_msg());
+        }
+        
+        return [
+            'existingPages' => $result['existingPages'] ?? [],
+            'newPageProposals' => $result['newPageProposals'] ?? [],
+            'linkInsertionDetails' => $result['linkInsertionDetails'] ?? []
         ];
     }
     
