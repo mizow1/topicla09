@@ -715,80 +715,19 @@ function showContentModal(content, headingStructure) {
     // MarkdownをHTMLに変換
     const htmlContent = markdownToHtml(content);
     
-    // モーダルのHTML
-    const modalHtml = `
-        <div class="modal fade" id="contentModal" tabindex="-1" aria-labelledby="contentModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="contentModalLabel">📝 生成された記事本文</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <h6>📖 見出し構造:</h6>
-                            <pre class="bg-light p-2 border rounded"><code>${headingStructure.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
-                        </div>
-                        <div class="mb-3">
-                            <h6>✍️ 本文内容（HTML表示）:</h6>
-                            <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
-                                ${htmlContent}
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <h6>📄 本文内容（Markdown形式）:</h6>
-                            <pre class="bg-light p-2 border rounded" style="max-height: 300px; overflow-y: auto;"><code>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary copy-content-btn" data-content="${content.replace(/'/g, "\\'")}">
-                            📋 本文をコピー（Markdown）
-                        </button>
-                        <button type="button" class="btn btn-secondary copy-all-btn" data-content="${headingStructure.replace(/'/g, "\\'")}\\n\\n${content.replace(/'/g, "\\'")}">
-                            📋 構造+本文をコピー
-                        </button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
+    // 既存のモーダルの要素に値を設定
+    document.getElementById('contentModalLabel').textContent = '📝 生成された記事本文';
+    document.getElementById('contentHeadingStructure').textContent = headingStructure;
+    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
+    document.getElementById('contentMarkdownEditor').value = content;
     
-    // 既存のモーダルがあれば削除
-    const existingModal = document.getElementById('contentModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // 新しいモーダルを追加
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    // 現在の記事タイトルと構造を保存
+    window.currentArticleTitle = '生成された記事';
+    window.currentHeadingStructure = headingStructure;
     
     // モーダルを表示
     const modal = new bootstrap.Modal(document.getElementById('contentModal'));
     modal.show();
-    
-    // モーダル内のコピーボタンのイベントリスナーを追加
-    document.getElementById('contentModal').addEventListener('click', function(e) {
-        if (e.target.classList.contains('copy-content-btn') || e.target.classList.contains('copy-all-btn')) {
-            const textToCopy = e.target.dataset.content;
-            const button = e.target;
-            const originalText = button.textContent;
-            
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    button.textContent = '✅ コピー済み';
-                    setTimeout(() => {
-                        button.textContent = originalText;
-                    }, 2000);
-                }).catch(err => {
-                    console.error('コピーに失敗しました:', err);
-                    fallbackCopyFromModal(textToCopy, button, originalText);
-                });
-            } else {
-                fallbackCopyFromModal(textToCopy, button, originalText);
-            }
-        }
-    });
 }
 
 function copyToClipboard(text) {
@@ -821,25 +760,6 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-function fallbackCopyFromModal(text, button, originalText) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.select();
-    
-    try {
-        document.execCommand('copy');
-        button.textContent = '✅ コピー済み';
-        setTimeout(() => {
-            button.textContent = originalText;
-        }, 2000);
-    } catch (err) {
-        console.error('コピーに失敗しました:', err);
-        alert('コピーに失敗しました。手動でコピーしてください。');
-    }
-    
-    document.body.removeChild(textArea);
-}
 
 // ページロード時にフィルターを初期化
 document.addEventListener('DOMContentLoaded', function() {
