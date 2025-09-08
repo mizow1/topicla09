@@ -496,6 +496,138 @@ switch ($action) {
             }
         }
         break;
+        
+    case 'save-article':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['title']) || empty($input['content'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'タイトルと本文が必要です']);
+                }
+                
+                $title = $input['title'];
+                $content = $input['content'];
+                $structure = $input['structure'] ?? '';
+                $siteUrl = $input['siteUrl'] ?? '';
+                
+                // 記事をデータベースに保存
+                $articleId = $db->execute(
+                    "INSERT INTO saved_articles (title, content, structure, site_url, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())",
+                    [$title, $content, $structure, $siteUrl]
+                );
+                
+                $articleId = $db->lastInsertId();
+                
+                ob_clean();
+                jsonResponse([
+                    'success' => true,
+                    'articleId' => $articleId,
+                    'message' => '記事を保存しました'
+                ]);
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => '記事保存中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'create-wordpress-post':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['title']) || empty($input['content'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'タイトルと本文が必要です']);
+                }
+                
+                $title = $input['title'];
+                $content = $input['content'];
+                $structure = $input['structure'] ?? '';
+                
+                // WordPress APIを使用して記事を作成
+                require_once __DIR__ . '/../includes/wordpress_client.php';
+                
+                $wpClient = new WordPressClient();
+                $result = $wpClient->createPost($title, $content, $structure);
+                
+                if ($result['success']) {
+                    // 作成された記事も保存しておく
+                    $db->execute(
+                        "INSERT INTO saved_articles (title, content, structure, wordpress_post_id, wordpress_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$title, $content, $structure, $result['post_id'], $result['post_url']]
+                    );
+                    
+                    ob_clean();
+                    jsonResponse([
+                        'success' => true,
+                        'postId' => $result['post_id'],
+                        'postUrl' => $result['post_url'],
+                        'message' => 'WordPress記事を作成しました'
+                    ]);
+                } else {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => $result['error']]);
+                }
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => 'WordPress記事作成中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
+        
+    case 'update-wordpress-post':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            ob_start();
+            error_reporting(0);
+            
+            try {
+                $input = json_decode(file_get_contents('php://input'), true);
+                
+                if (!$input || empty($input['wordpressUrl']) || empty($input['content'])) {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => 'WordPressのURLと本文が必要です']);
+                }
+                
+                $wordpressUrl = $input['wordpressUrl'];
+                $title = $input['title'];
+                $content = $input['content'];
+                $structure = $input['structure'] ?? '';
+                
+                // WordPress APIを使用して記事を更新
+                require_once __DIR__ . '/../includes/wordpress_client.php';
+                
+                $wpClient = new WordPressClient();
+                $result = $wpClient->updatePost($wordpressUrl, $title, $content, $structure);
+                
+                if ($result['success']) {
+                    ob_clean();
+                    jsonResponse([
+                        'success' => true,
+                        'postId' => $result['post_id'],
+                        'message' => 'WordPress記事を更新しました'
+                    ]);
+                } else {
+                    ob_clean();
+                    jsonResponse(['success' => false, 'error' => $result['error']]);
+                }
+                
+            } catch (Exception $e) {
+                ob_clean();
+                jsonResponse(['success' => false, 'error' => 'WordPress記事更新中にエラーが発生しました: ' . $e->getMessage()]);
+            }
+        }
+        break;
 
     case 'history':
         $page = max(1, intval($_GET['page'] ?? 1));

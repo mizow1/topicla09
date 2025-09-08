@@ -392,16 +392,35 @@
                     <div id="contentHtmlDisplay" class="border rounded p-3" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
                 <div class="mb-3">
-                    <h6>📄 本文内容（Markdown形式）:</h6>
-                    <pre id="contentMarkdownDisplay" class="bg-light p-2 border rounded" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></pre>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">📝 本文編集（Markdown形式）:</h6>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="previewBtn">👁️ プレビュー</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="editModeBtn" style="display: none;">✏️ 編集</button>
+                        </div>
+                    </div>
+                    <textarea id="contentMarkdownEditor" class="form-control" style="height: 300px; font-family: 'Consolas', monospace;" placeholder="記事本文をMarkdown形式で編集してください..."></textarea>
+                    <div id="contentMarkdownPreview" class="border rounded p-3 bg-light" style="height: 300px; overflow-y: auto; display: none;"></div>
                 </div>
             </div>
             <div class="modal-footer">
+                <div class="me-auto">
+                    <div class="input-group" style="width: 300px;">
+                        <input type="text" class="form-control form-control-sm" id="wordpressUrlInput" placeholder="WordPress記事URL（更新用）">
+                        <button class="btn btn-outline-info btn-sm" type="button" id="updateWordPressBtn">🔄 記事更新</button>
+                    </div>
+                </div>
                 <button type="button" class="btn btn-secondary" id="copyMarkdownBtn">
                     📋 Markdownをコピー
                 </button>
                 <button type="button" class="btn btn-secondary" id="copyAllContentBtn">
                     📋 構造+本文をコピー
+                </button>
+                <button type="button" class="btn btn-success" id="createNewPostBtn">
+                    ✨ 新規記事として作成
+                </button>
+                <button type="button" class="btn btn-primary" id="saveArticleBtn">
+                    💾 記事を保存
                 </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
             </div>
@@ -1064,7 +1083,7 @@ async function generateArticleContentFromStructure(articleTitle, headingStructur
     document.getElementById('contentModalLabel').textContent = '✍️ 記事本文';
     document.getElementById('contentHeadingStructure').textContent = headingStructure;
     document.getElementById('contentHtmlDisplay').innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">本文生成中...</span></div><p class="mt-2">記事本文を生成中です...</p></div>';
-    document.getElementById('contentMarkdownDisplay').textContent = '';
+    document.getElementById('contentMarkdownEditor').value = '';
     
     // モーダル表示
     const modal = new bootstrap.Modal(document.getElementById('contentModal'));
@@ -1088,7 +1107,11 @@ async function generateArticleContentFromStructure(articleTitle, headingStructur
         if (data.success) {
             const htmlContent = markdownToHtml(data.content);
             document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
-            document.getElementById('contentMarkdownDisplay').textContent = data.content;
+            document.getElementById('contentMarkdownEditor').value = data.content;
+            
+            // 現在の記事タイトルと構造を保存
+            window.currentArticleTitle = articleTitle;
+            window.currentHeadingStructure = headingStructure;
         } else {
             document.getElementById('contentHtmlDisplay').innerHTML = '<div class="alert alert-danger">本文生成に失敗しました: ' + (data.error || '不明なエラー') + '</div>';
         }
@@ -1100,7 +1123,7 @@ async function generateArticleContentFromStructure(articleTitle, headingStructur
 
 // モーダル内のコピーボタンイベント
 document.getElementById('copyMarkdownBtn').addEventListener('click', function() {
-    const markdown = document.getElementById('contentMarkdownDisplay').textContent;
+    const markdown = document.getElementById('contentMarkdownEditor').value;
     if (markdown) {
         copyToClipboard(markdown);
     } else {
@@ -1110,12 +1133,201 @@ document.getElementById('copyMarkdownBtn').addEventListener('click', function() 
 
 document.getElementById('copyAllContentBtn').addEventListener('click', function() {
     const structure = document.getElementById('contentHeadingStructure').textContent;
-    const markdown = document.getElementById('contentMarkdownDisplay').textContent;
+    const markdown = document.getElementById('contentMarkdownEditor').value;
     if (structure && markdown) {
         const combined = structure + '\n\n' + markdown;
         copyToClipboard(combined);
     } else {
         alert('コピーするコンテンツがありません');
+    }
+});
+
+// プレビュー・編集モード切り替え機能
+document.getElementById('previewBtn').addEventListener('click', function() {
+    const editor = document.getElementById('contentMarkdownEditor');
+    const preview = document.getElementById('contentMarkdownPreview');
+    const previewBtn = document.getElementById('previewBtn');
+    const editBtn = document.getElementById('editModeBtn');
+    
+    // エディターの内容をHTMLに変換してプレビューに表示
+    const markdownContent = editor.value;
+    const htmlContent = markdownToHtml(markdownContent);
+    preview.innerHTML = htmlContent;
+    
+    // 表示切り替え
+    editor.style.display = 'none';
+    preview.style.display = 'block';
+    previewBtn.style.display = 'none';
+    editBtn.style.display = 'inline-block';
+    
+    // HTML表示も同時更新
+    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
+});
+
+document.getElementById('editModeBtn').addEventListener('click', function() {
+    const editor = document.getElementById('contentMarkdownEditor');
+    const preview = document.getElementById('contentMarkdownPreview');
+    const previewBtn = document.getElementById('previewBtn');
+    const editBtn = document.getElementById('editModeBtn');
+    
+    // 表示切り替え
+    editor.style.display = 'block';
+    preview.style.display = 'none';
+    previewBtn.style.display = 'inline-block';
+    editBtn.style.display = 'none';
+});
+
+// リアルタイムプレビュー（編集中にHTML表示も更新）
+document.getElementById('contentMarkdownEditor').addEventListener('input', function() {
+    const markdownContent = this.value;
+    const htmlContent = markdownToHtml(markdownContent);
+    document.getElementById('contentHtmlDisplay').innerHTML = htmlContent;
+});
+
+// 記事保存機能
+document.getElementById('saveArticleBtn').addEventListener('click', async function() {
+    const button = this;
+    const originalText = button.textContent;
+    
+    const title = window.currentArticleTitle || 'Unknown Title';
+    const structure = document.getElementById('contentHeadingStructure').textContent;
+    const content = document.getElementById('contentMarkdownEditor').value;
+    
+    if (!content.trim()) {
+        alert('記事内容が空です');
+        return;
+    }
+    
+    button.disabled = true;
+    button.textContent = '💾 保存中...';
+    
+    try {
+        const response = await fetch('<?= url("analysis/save-article") ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                structure: structure,
+                content: content,
+                siteUrl: siteUrl
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ 記事を保存しました');
+            window.savedArticleId = data.articleId;
+        } else {
+            alert('保存に失敗しました: ' + (data.error || '不明なエラー'));
+        }
+    } catch (error) {
+        console.error('保存エラー:', error);
+        alert('保存中にエラーが発生しました');
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+});
+
+// WordPress新規記事作成機能
+document.getElementById('createNewPostBtn').addEventListener('click', async function() {
+    const button = this;
+    const originalText = button.textContent;
+    
+    const title = window.currentArticleTitle || 'Unknown Title';
+    const structure = document.getElementById('contentHeadingStructure').textContent;
+    const content = document.getElementById('contentMarkdownEditor').value;
+    
+    if (!content.trim()) {
+        alert('記事内容が空です');
+        return;
+    }
+    
+    button.disabled = true;
+    button.textContent = '✨ 作成中...';
+    
+    try {
+        const response = await fetch('<?= url("analysis/create-wordpress-post") ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                content: content,
+                structure: structure
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ WordPress記事を作成しました\nURL: ' + data.postUrl);
+        } else {
+            alert('WordPress記事作成に失敗しました: ' + (data.error || '不明なエラー'));
+        }
+    } catch (error) {
+        console.error('WordPress作成エラー:', error);
+        alert('WordPress記事作成中にエラーが発生しました');
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+});
+
+// WordPress記事更新機能
+document.getElementById('updateWordPressBtn').addEventListener('click', async function() {
+    const button = this;
+    const originalText = button.textContent;
+    
+    const wordpressUrl = document.getElementById('wordpressUrlInput').value.trim();
+    const title = window.currentArticleTitle || 'Unknown Title';
+    const structure = document.getElementById('contentHeadingStructure').textContent;
+    const content = document.getElementById('contentMarkdownEditor').value;
+    
+    if (!wordpressUrl) {
+        alert('WordPress記事URLを入力してください');
+        return;
+    }
+    
+    if (!content.trim()) {
+        alert('記事内容が空です');
+        return;
+    }
+    
+    button.disabled = true;
+    button.textContent = '🔄 更新中...';
+    
+    try {
+        const response = await fetch('<?= url("analysis/update-wordpress-post") ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                wordpressUrl: wordpressUrl,
+                title: title,
+                content: content,
+                structure: structure
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ WordPress記事を更新しました');
+        } else {
+            alert('WordPress記事更新に失敗しました: ' + (data.error || '不明なエラー'));
+        }
+    } catch (error) {
+        console.error('WordPress更新エラー:', error);
+        alert('WordPress記事更新中にエラーが発生しました');
+    } finally {
+        button.disabled = false;
+        button.textContent = originalText;
     }
 });
 
