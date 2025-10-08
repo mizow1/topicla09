@@ -1,3 +1,4 @@
 2025-09-25 22:30 要求：.envファイルを履歴から削除し.gitignore作成 → 処理結果：.envを履歴から削除、.gitignore作成、コミット完了
 2025-10-08 06:48 要求：Gemini APIをOPENAI_MODELとOPENAI_API_KEYで動作変更 → 処理結果：config.php、openai_client.php作成、全controllers更新完了
 2025-10-08 06:56 要求：内部リンク最適化表示のJSON形式バグ修正 → 処理結果：views/result.php、openai_client.phpのproposals処理修正完了
+2025-10-08 07:03 要求：本文作成時のUTF-8エンコードエラー修正 → 処理結果：openai_client.php、controllers、index.phpにUTF-8処理追加完了

@@ -48,8 +48,8 @@ function redirect($url) {
 }
 
 function jsonResponse($data) {
-    header('Content-Type: application/json');
-    echo json_encode($data);
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     exit;
 }
 

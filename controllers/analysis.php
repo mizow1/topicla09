@@ -207,13 +207,16 @@ switch ($action) {
             error_reporting(0);
             
             try {
-                $input = json_decode(file_get_contents('php://input'), true);
-                
+                $rawInput = file_get_contents('php://input');
+                // UTF-8エンコーディングを確保
+                $rawInput = mb_convert_encoding($rawInput, 'UTF-8', 'UTF-8');
+                $input = json_decode($rawInput, true);
+
                 if (!$input || empty($input['headingStructure']) || empty($input['siteUrl'])) {
                     ob_clean();
                     jsonResponse(['success' => false, 'error' => 'パラメータが不足しています']);
                 }
-                
+
                 // 元ページの内容を取得してコンテキストとして利用
                 $siteUrl = $input['siteUrl'];
                 $headingStructure = $input['headingStructure'];

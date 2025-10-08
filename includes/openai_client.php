@@ -169,6 +169,9 @@ class OpenAIClient {
     }
 
     private function callOpenAIAPI($prompt) {
+        // UTF-8エンコーディングを確保
+        $prompt = mb_convert_encoding($prompt, 'UTF-8', 'UTF-8');
+
         $data = [
             'model' => $this->model,
             'messages' => [
@@ -181,7 +184,7 @@ class OpenAIClient {
             'max_tokens' => 8192
         ];
 
-        $jsonData = json_encode($data, JSON_UNESCAPED_UNICODE);
+        $jsonData = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             throw new Exception("JSONエンコードエラー: " . json_last_error_msg());
@@ -229,7 +232,11 @@ class OpenAIClient {
             throw new Exception("OpenAI APIから有効なレスポンスが得られませんでした");
         }
 
-        return $responseData['choices'][0]['message']['content'];
+        $content = $responseData['choices'][0]['message']['content'];
+        // レスポンスのUTF-8エンコーディングを確保
+        $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+
+        return $content;
     }
 
     private function parseAnalysisResponse($response) {
@@ -332,6 +339,10 @@ class OpenAIClient {
     }
 
     public function generateContentFromHeadings($headingStructure, $siteUrl) {
+        // 入力データのUTF-8エンコーディングを確保
+        $headingStructure = mb_convert_encoding($headingStructure, 'UTF-8', 'UTF-8');
+        $siteUrl = mb_convert_encoding($siteUrl, 'UTF-8', 'UTF-8');
+
         // 元ページの内容を取得
         $originalContent = '';
         try {
@@ -340,6 +351,8 @@ class OpenAIClient {
             $originalContent = strip_tags($originalContent);
             $originalContent = preg_replace('/\s+/', ' ', trim($originalContent));
             $originalContent = mb_substr($originalContent, 0, 10000); // 10,000文字まで
+            // UTF-8エンコーディングを確保
+            $originalContent = mb_convert_encoding($originalContent, 'UTF-8', 'UTF-8');
         } catch (Exception $e) {
             $originalContent = "元ページの取得に失敗しました。";
         }
