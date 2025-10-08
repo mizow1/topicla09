@@ -33,9 +33,9 @@ function loadEnv($path) {
 
 loadEnv(__DIR__ . '/../.env');
 
-// Gemini API設定
-define('GEMINI_MODEL', $_ENV['GEMINI_MODEL'] ?? 'gemini-2.0-flash');
-define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
+// OpenAI API設定
+define('OPENAI_MODEL', $_ENV['OPENAI_MODEL'] ?? 'gpt-4o-mini');
+define('OPENAI_API_KEY', $_ENV['OPENAI_API_KEY'] ?? '');
 
 // セッション設定
 ini_set('session.cookie_secure', 1);

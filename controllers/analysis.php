@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/database.php';
-require_once __DIR__ . '/../includes/gemini_client.php';
+require_once __DIR__ . '/../includes/openai_client.php';
 
 $db = Database::getInstance();
 
@@ -66,8 +66,8 @@ switch ($action) {
                 $analysisId = $db->lastInsertId();
                 
                 $startTime = microtime(true);
-                $geminiClient = new GeminiClient();
-                $analysisResults = $geminiClient->analyzePage($url, $site);
+                $openaiClient = new OpenAIClient();
+                $analysisResults = $openaiClient->analyzePage($url, $site);
                 $endTime = microtime(true);
                 
                 $processingTime = round($endTime - $startTime, 2);
@@ -182,8 +182,8 @@ switch ($action) {
             }
             
             try {
-                $geminiClient = new GeminiClient();
-                $newProposals = $geminiClient->regenerateProposals(
+                $openaiClient = new OpenAIClient();
+                $newProposals = $openaiClient->regenerateProposals(
                     $input['category'],
                     $input['title'] ?? '',
                     $input['currentProposals']
@@ -217,9 +217,9 @@ switch ($action) {
                 // 元ページの内容を取得してコンテキストとして利用
                 $siteUrl = $input['siteUrl'];
                 $headingStructure = $input['headingStructure'];
-                
-                $geminiClient = new GeminiClient();
-                $content = $geminiClient->generateContentFromHeadings($headingStructure, $siteUrl);
+
+                $openaiClient = new OpenAIClient();
+                $content = $openaiClient->generateContentFromHeadings($headingStructure, $siteUrl);
                 
                 ob_clean();
                 jsonResponse([
@@ -260,11 +260,11 @@ switch ($action) {
                     jsonResponse(['success' => false, 'error' => '分析結果が見つかりません']);
                 }
                 
-                $geminiClient = new GeminiClient();
-                $result = $geminiClient->generateTopicClusterFromAnalysis(
-                    $siteUrl, 
-                    $analysis, 
-                    $isRegenerate, 
+                $openaiClient = new OpenAIClient();
+                $result = $openaiClient->generateTopicClusterFromAnalysis(
+                    $siteUrl,
+                    $analysis,
+                    $isRegenerate,
                     $currentProposals
                 );
                 
@@ -300,8 +300,8 @@ switch ($action) {
                 $isRegenerate = $input['regenerate'] ?? false;
                 $currentStructures = $input['currentStructures'] ?? [];
                 
-                $geminiClient = new GeminiClient();
-                $structures = $geminiClient->generateArticleStructures($articleTitle, $topic, $isRegenerate, $currentStructures);
+                $openaiClient = new OpenAIClient();
+                $structures = $openaiClient->generateArticleStructures($articleTitle, $topic, $isRegenerate, $currentStructures);
                 
                 ob_clean();
                 jsonResponse([
@@ -333,8 +333,8 @@ switch ($action) {
                 $headingStructure = $input['headingStructure'];
                 $topic = $input['topic'] ?? '';
                 
-                $geminiClient = new GeminiClient();
-                $content = $geminiClient->generateArticleContentForCluster($headingStructure, $articleTitle, $topic);
+                $openaiClient = new OpenAIClient();
+                $content = $openaiClient->generateArticleContentForCluster($headingStructure, $articleTitle, $topic);
                 
                 ob_clean();
                 jsonResponse([
@@ -375,11 +375,11 @@ switch ($action) {
                     jsonResponse(['success' => false, 'error' => '分析結果が見つかりません']);
                 }
                 
-                $geminiClient = new GeminiClient();
-                $result = $geminiClient->generateInternalLinkOptimization(
-                    $siteUrl, 
+                $openaiClient = new OpenAIClient();
+                $result = $openaiClient->generateInternalLinkOptimization(
+                    $siteUrl,
                     $analysis,
-                    $isRegenerate, 
+                    $isRegenerate,
                     $currentProposals
                 );
                 
@@ -415,8 +415,8 @@ switch ($action) {
                 $currentStructure = $input['currentStructure'];
                 $topic = $input['topic'] ?? '';
                 
-                $geminiClient = new GeminiClient();
-                $newStructure = $geminiClient->regenerateArticleStructure($articleTitle, $topic, $currentStructure);
+                $openaiClient = new OpenAIClient();
+                $newStructure = $openaiClient->regenerateArticleStructure($articleTitle, $topic, $currentStructure);
                 
                 ob_clean();
                 jsonResponse([
@@ -449,8 +449,8 @@ switch ($action) {
                 $currentTitle = $input['currentTitle'] ?? '';
                 $topic = $input['topic'] ?? '';
                 
-                $geminiClient = new GeminiClient();
-                $newTitle = $geminiClient->regenerateClusterArticle($currentTitle, $topic);
+                $openaiClient = new OpenAIClient();
+                $newTitle = $openaiClient->regenerateClusterArticle($currentTitle, $topic);
                 
                 ob_clean();
                 jsonResponse([
@@ -482,8 +482,8 @@ switch ($action) {
                 $currentProposal = $input['currentProposal'];
                 $topic = $input['topic'] ?? '';
                 
-                $geminiClient = new GeminiClient();
-                $newProposal = $geminiClient->regenerateTopicCluster($currentProposal, $topic);
+                $openaiClient = new OpenAIClient();
+                $newProposal = $openaiClient->regenerateTopicCluster($currentProposal, $topic);
                 
                 ob_clean();
                 jsonResponse([

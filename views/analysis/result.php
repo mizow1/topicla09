@@ -170,23 +170,54 @@
                                     <div class="proposal-grid">
                                         <?php foreach ($proposals as $proposalIndex => $proposal): ?>
                                         <?php
-                                        // 見出し構造の最適化提案はHTMLタグ形式に変換してエスケープし、pre+codeで表示
+                                        // 内部リンクの最適化かどうかを判定
+                                        $isInternalLink = (strpos($rec['title'], '内部リンク') !== false);
                                         $isHeadingStructure = (strpos($rec['category'], 'structure') !== false || strpos($rec['title'], '見出し') !== false);
+
                                         $htmlProposal = $proposal;
-                                        
-                                        if ($isHeadingStructure) {
+                                        $displayProposal = $proposal;
+
+                                        // $proposalが配列の場合の処理
+                                        if (is_array($proposal)) {
+                                            if ($isInternalLink) {
+                                                // 内部リンクの場合は読みやすい形式に変換
+                                                $parts = [];
+                                                if (isset($proposal['link_text']) || isset($proposal['linkText'])) {
+                                                    $linkText = $proposal['link_text'] ?? $proposal['linkText'];
+                                                    $parts[] = "リンクテキスト: " . $linkText;
+                                                }
+                                                if (isset($proposal['url'])) {
+                                                    $parts[] = "URL: " . $proposal['url'];
+                                                }
+                                                if (isset($proposal['insert_at']) || isset($proposal['insertLocation'])) {
+                                                    $insertAt = $proposal['insert_at'] ?? $proposal['insertLocation'];
+                                                    $parts[] = "挿入位置: " . $insertAt;
+                                                }
+                                                if (isset($proposal['reason'])) {
+                                                    $parts[] = "理由: " . $proposal['reason'];
+                                                }
+                                                $displayProposal = implode("\n", $parts);
+                                                $htmlProposal = $displayProposal;
+                                            } else {
+                                                // その他の配列の場合
+                                                $displayProposal = isset($proposal['text']) ? $proposal['text'] : (isset($proposal[0]) ? $proposal[0] : json_encode($proposal, JSON_UNESCAPED_UNICODE));
+                                                $htmlProposal = $displayProposal;
+                                            }
+                                        }
+
+                                        if ($isHeadingStructure && !$isInternalLink) {
                                             // h1: テキスト, h2: テキスト形式を<h1>テキスト</h1>, <h2>テキスト</h2>に変換
-                                            $htmlProposal = preg_replace('/h(\d):\s*([^,\n]+)/', '<h$1>$2</h$1>', $proposal);
+                                            $htmlProposal = preg_replace('/h(\d):\s*([^,\n]+)/', '<h$1>$2</h$1>', $displayProposal);
                                             $htmlProposal = str_replace(', ', "\n", $htmlProposal);
                                         }
                                         ?>
                                         <div class="proposal-card" data-proposal-id="<?= $proposalIndex ?>">
                                             <div class="proposal-number"><?= $proposalIndex + 1 ?></div>
                                             <div class="proposal-text">
-                                                <?php if ($isHeadingStructure): ?>
+                                                <?php if ($isHeadingStructure && !$isInternalLink): ?>
                                                     <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; margin: 0;"><code><?= htmlspecialchars(trim($htmlProposal)) ?></code></pre>
                                                 <?php else: ?>
-                                                    <?= nl2br(htmlspecialchars(trim($proposal))) ?>
+                                                    <?= nl2br(htmlspecialchars(trim($displayProposal))) ?>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="proposal-actions">
